@@ -5,6 +5,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.reink.data.model.ReadingPreferences
@@ -22,6 +28,15 @@ fun ArticleWebView(
     val wrappedHtml = wrapHtml(contentHtml, cssOverrides)
     val isPaginated = preferences.paginationMode == "paginated"
 
+    // Keep updated references for use in factory closures
+    val currentOnLinkTapped by rememberUpdatedState(onLinkTapped)
+    val currentOnPageCountChanged by rememberUpdatedState(onPageCountChanged)
+    val currentPageState by rememberUpdatedState(currentPage)
+    val currentIsPaginated by rememberUpdatedState(isPaginated)
+
+    // Track last loaded HTML to avoid redundant reloads
+    var lastLoadedHtml by remember { mutableStateOf("") }
+
     AndroidView(
         factory = { context ->
             WebView(context).apply {
@@ -31,7 +46,9 @@ fun ArticleWebView(
                 settings.useWideViewPort = false
 
                 addJavascriptInterface(
-                    PageBridge(onPageCount = onPageCountChanged),
+                    PageBridge(onPageCount = { count ->
+                        currentOnPageCountChanged(count)
+                    }),
                     "ReInk",
                 )
 
@@ -41,24 +58,20 @@ fun ArticleWebView(
                         request: WebResourceRequest?,
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
-                        onLinkTapped(url)
+                        currentOnLinkTapped(url)
                         return true
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         view ?: return
+                        if (!currentIsPaginated) return
                         view.evaluateJavascript(
                             """
                             (function() {
-                                var isPaginated = document.body.style.columnWidth !== '' ||
-                                    getComputedStyle(document.body).columnWidth !== 'auto';
-                                if (isPaginated) {
-                                    var pageCount = Math.max(1, Math.ceil(document.body.scrollWidth / window.innerWidth));
-                                    ReInk.reportPageCount(pageCount);
-                                    var page = $currentPage;
-                                    window.scrollTo(page * window.innerWidth, 0);
-                                }
+                                var pageCount = Math.max(1, Math.ceil(document.body.scrollWidth / window.innerWidth));
+                                ReInk.reportPageCount(pageCount);
+                                window.scrollTo(${currentPageState} * window.innerWidth, 0);
                             })();
                             """.trimIndent(),
                             null,
@@ -73,17 +86,20 @@ fun ArticleWebView(
                     "UTF-8",
                     null,
                 )
+                lastLoadedHtml = wrappedHtml
             }
         },
         update = { webView ->
-            webView.loadDataWithBaseURL(
-                "file:///android_asset/",
-                wrappedHtml,
-                "text/html",
-                "UTF-8",
-                null,
-            )
-            if (isPaginated) {
+            if (wrappedHtml != lastLoadedHtml) {
+                webView.loadDataWithBaseURL(
+                    "file:///android_asset/",
+                    wrappedHtml,
+                    "text/html",
+                    "UTF-8",
+                    null,
+                )
+                lastLoadedHtml = wrappedHtml
+            } else if (isPaginated) {
                 webView.evaluateJavascript(
                     "window.scrollTo(${currentPage} * window.innerWidth, 0);",
                     null,
