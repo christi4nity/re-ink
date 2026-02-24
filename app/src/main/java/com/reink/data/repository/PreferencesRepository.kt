@@ -23,6 +23,7 @@ class PreferencesRepository @Inject constructor(
         private val KEY_LINE_HEIGHT = floatPreferencesKey("line_height")
         private val KEY_MARGIN_HORIZONTAL = intPreferencesKey("margin_horizontal")
         private val KEY_TEXT_ALIGN = stringPreferencesKey("text_align")
+        private val KEY_PAGINATION_MODE = stringPreferencesKey("pagination_mode")
         private val KEY_SUBSTACK_SID = stringPreferencesKey("substack_sid")
     }
 
@@ -34,6 +35,7 @@ class PreferencesRepository @Inject constructor(
                 lineHeight = prefs[KEY_LINE_HEIGHT] ?: 1.6f,
                 marginHorizontal = prefs[KEY_MARGIN_HORIZONTAL] ?: 16,
                 textAlign = prefs[KEY_TEXT_ALIGN] ?: "left",
+                paginationMode = prefs[KEY_PAGINATION_MODE] ?: "scroll",
             )
         }
 
@@ -44,6 +46,7 @@ class PreferencesRepository @Inject constructor(
             store[KEY_LINE_HEIGHT] = prefs.lineHeight
             store[KEY_MARGIN_HORIZONTAL] = prefs.marginHorizontal
             store[KEY_TEXT_ALIGN] = prefs.textAlign
+            store[KEY_PAGINATION_MODE] = prefs.paginationMode
         }
     }
 

@@ -6,4 +6,5 @@ data class ReadingPreferences(
     val lineHeight: Float = 1.6f,
     val marginHorizontal: Int = 16,
     val textAlign: String = "left",
+    val paginationMode: String = "scroll",
 )
