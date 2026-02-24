@@ -75,11 +75,11 @@ fun ReInkNavGraph(
                             },
                             icon = {},
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                             ),
                         )
                     }
@@ -119,6 +119,7 @@ fun ReInkNavGraph(
             ) {
                 ReaderScreen(
                     onBack = { navController.popBackStack() },
+                    volumeKeyEvents = volumeKeyEvents,
                 )
             }
         }
