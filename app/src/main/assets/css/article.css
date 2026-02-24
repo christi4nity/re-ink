@@ -1,0 +1,189 @@
+:root {
+    --font-family: 'Literata', serif;
+    --font-size: 18px;
+    --line-height: 1.6;
+    --margin-horizontal: 16px;
+    --text-align: left;
+}
+
+@font-face {
+    font-family: 'Literata';
+    src: url('file:///android_asset/fonts/Literata-Regular.ttf');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Literata';
+    src: url('file:///android_asset/fonts/Literata-Bold.ttf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'Source Serif 4';
+    src: url('file:///android_asset/fonts/SourceSerif4-Regular.ttf');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Source Serif 4';
+    src: url('file:///android_asset/fonts/SourceSerif4-Bold.ttf');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible';
+    src: url('file:///android_asset/fonts/AtkinsonHyperlegible-Regular.ttf');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible';
+    src: url('file:///android_asset/fonts/AtkinsonHyperlegible-Bold.ttf');
+    font-weight: bold;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    text-align: var(--text-align);
+    margin: 0;
+    padding: 12px var(--margin-horizontal);
+    color: #000000;
+    background: #ffffff;
+    -webkit-font-smoothing: antialiased;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: bold;
+    line-height: 1.3;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+h1 { font-size: 1.5em; }
+h2 { font-size: 1.3em; }
+h3 { font-size: 1.15em; }
+
+p {
+    margin: 0 0 1em 0;
+}
+
+a {
+    color: #000000;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: bold;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    filter: grayscale(100%);
+    margin: 1em 0;
+}
+
+figure {
+    margin: 1em 0;
+    padding: 0;
+}
+
+figcaption {
+    font-size: 0.85em;
+    color: #666666;
+    margin-top: 0.5em;
+}
+
+blockquote {
+    border-left: 3px solid #000000;
+    margin: 1em 0;
+    padding: 0.5em 0 0.5em 1em;
+    color: #333333;
+}
+
+code {
+    font-family: monospace;
+    font-size: 0.9em;
+    background: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+
+pre {
+    background: #f0f0f0;
+    padding: 12px;
+    overflow-x: auto;
+    border: 1px solid #cccccc;
+    margin: 1em 0;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+ul, ol {
+    padding-left: 1.5em;
+    margin: 0 0 1em 0;
+}
+
+li {
+    margin-bottom: 0.4em;
+}
+
+hr {
+    border: none;
+    border-top: 2px solid #000000;
+    margin: 2em 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+th, td {
+    border: 1px solid #cccccc;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    font-weight: bold;
+    background: #f0f0f0;
+}
+
+/* Hide Substack-specific elements */
+.subscription-widget-wrap,
+.subscribe-widget,
+.footer,
+.post-footer,
+.share-dialog,
+.pencraft,
+.like-button-container,
+.post-ufi,
+.button-wrapper,
+.social-share,
+.comments-section,
+.comment-list-wrapper {
+    display: none !important;
+}
+
+/* Ensure good contrast for e-ink */
+.subtitle {
+    color: #333333;
+    font-weight: 600;
+}
+
+/* Remove any animations */
+* {
+    animation: none !important;
+    transition: none !important;
+}
