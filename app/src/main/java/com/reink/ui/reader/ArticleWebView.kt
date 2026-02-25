@@ -462,7 +462,7 @@ private const val PAGINATION_SETUP_JS = """
     var imgs = b.querySelectorAll('img, video, iframe, figure');
     for (var i = 0; i < imgs.length; i++) {
         imgs[i].style.breakInside = 'avoid';
-        imgs[i].style.maxHeight = (vh - 24) + 'px';
+        imgs[i].style.maxHeight = (vh - 2 * vertPad) + 'px';
     }
 
     document.documentElement.style.height = vh + 'px';

@@ -21,6 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+// Retained for potential future use — email-based ingestion replaced cookie auth.
+sealed interface TokenSyncStatus {
+    data object Idle : TokenSyncStatus
+    data object Syncing : TokenSyncStatus
+    data class Success(val imported: Int, val matched: Int) : TokenSyncStatus
+    data class Error(val message: String) : TokenSyncStatus
+}
+
 @Composable
 fun AuthSection(
     substackSid: String,

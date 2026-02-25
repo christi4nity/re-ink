@@ -22,7 +22,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateToSignIn: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -46,17 +45,6 @@ fun SettingsScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                AuthSection(
-                    substackSid = state.substackSid,
-                    tokenSyncStatus = state.tokenSyncStatus,
-                    onSidChanged = { viewModel.updateSubstackSid(it) },
-                    onSyncTokens = { viewModel.syncTokens() },
-                    onNavigateToSignIn = onNavigateToSignIn,
-                    onSignOut = { viewModel.signOut() },
-                )
-            }
-
-            item {
                 EmailSettingsSection(
                     emailConfigured = state.emailConfigured,
                     emailHost = state.emailHost,
