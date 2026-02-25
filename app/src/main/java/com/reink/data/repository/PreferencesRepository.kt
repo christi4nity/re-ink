@@ -2,9 +2,11 @@ package com.reink.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.reink.data.model.ReadingPreferences
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +27,8 @@ class PreferencesRepository @Inject constructor(
         private val KEY_TEXT_ALIGN = stringPreferencesKey("text_align")
         private val KEY_PAGINATION_MODE = stringPreferencesKey("pagination_mode")
         private val KEY_SUBSTACK_SID = stringPreferencesKey("substack_sid")
+        private val KEY_LAST_EMAIL_SYNC = longPreferencesKey("last_email_sync")
+        private val KEY_EMAIL_SYNC_ENABLED = booleanPreferencesKey("email_sync_enabled")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -58,5 +62,19 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setSubstackSid(sid: String) {
         dataStore.edit { store -> store[KEY_SUBSTACK_SID] = sid }
+    }
+
+    fun observeEmailSyncEnabled(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_EMAIL_SYNC_ENABLED] ?: false }
+
+    suspend fun setEmailSyncEnabled(enabled: Boolean) {
+        dataStore.edit { store -> store[KEY_EMAIL_SYNC_ENABLED] = enabled }
+    }
+
+    suspend fun getLastEmailSync(): Long =
+        dataStore.data.first()[KEY_LAST_EMAIL_SYNC] ?: 0L
+
+    suspend fun setLastEmailSync(timestamp: Long) {
+        dataStore.edit { store -> store[KEY_LAST_EMAIL_SYNC] = timestamp }
     }
 }

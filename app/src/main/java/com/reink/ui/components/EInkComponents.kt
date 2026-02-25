@@ -35,14 +35,14 @@ fun ErrorBanner(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
+        color = MaterialTheme.colorScheme.errorContainer,
     ) {
         Text(
             text = message,
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onErrorContainer,
         )
     }
 }

@@ -21,7 +21,7 @@ fun DateHeader(
             .fillMaxWidth()
             .padding(top = 16.dp, bottom = 4.dp),
         style = MaterialTheme.typography.labelLarge.copy(
-            letterSpacing = 2.sp,
+            letterSpacing = 3.sp,
         ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Start,

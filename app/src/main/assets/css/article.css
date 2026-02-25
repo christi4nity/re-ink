@@ -76,8 +76,9 @@ p {
 }
 
 a {
-    color: #000000;
+    color: #0D7377;
     text-decoration: underline;
+    text-decoration-thickness: 2px;
     text-underline-offset: 2px;
     font-weight: bold;
 }
@@ -85,7 +86,6 @@ a {
 img {
     max-width: 100%;
     height: auto;
-    filter: grayscale(100%);
     margin: 1em 0;
 }
 
@@ -101,7 +101,7 @@ figcaption {
 }
 
 blockquote {
-    border-left: 3px solid #000000;
+    border-left: 3px solid #0D7377;
     margin: 1em 0;
     padding: 0.5em 0 0.5em 1em;
     color: #333333;
@@ -160,13 +160,56 @@ th {
     background: #f0f0f0;
 }
 
+/* Article title card */
+.article-header {
+    text-align: center;
+    padding: 1em 0 0.5em;
+}
+
+.article-header-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    margin: 0 auto 0.6em;
+    display: block;
+}
+
+.article-header-source {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #777777;
+    font-weight: bold;
+    margin-bottom: 0.6em;
+}
+
+.article-header-title {
+    font-size: 1.6em;
+    font-weight: bold;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.article-header-author {
+    font-size: 0.85em;
+    color: #555555;
+    margin-top: 0.5em;
+}
+
+hr.article-header-divider {
+    border: none;
+    border-top: 2px solid #000000;
+    width: 25%;
+    margin: 1.5em auto;
+}
+
 /* Hide Substack-specific elements */
 .subscription-widget-wrap,
 .subscribe-widget,
 .footer,
 .post-footer,
 .share-dialog,
-.pencraft,
 .like-button-container,
 .post-ufi,
 .button-wrapper,

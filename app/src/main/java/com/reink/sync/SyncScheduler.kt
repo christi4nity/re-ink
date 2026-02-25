@@ -29,29 +29,39 @@ class SyncScheduler @Inject constructor(
             ExistingPeriodicWorkPolicy.KEEP,
             feedSyncRequest,
         )
+
+        val emailSyncRequest = PeriodicWorkRequestBuilder<EmailSyncWorker>(
+            4, TimeUnit.HOURS,
+        ).setConstraints(constraints).build()
+
+        workManager.enqueueUniquePeriodicWork(
+            EmailSyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            emailSyncRequest,
+        )
     }
 
     fun triggerImmediateSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
         val feedSync = OneTimeWorkRequestBuilder<FeedSyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build(),
-            )
+            .setConstraints(constraints)
+            .build()
+
+        val emailSync = OneTimeWorkRequestBuilder<EmailSyncWorker>()
+            .setConstraints(constraints)
             .build()
 
         val readLaterSync = OneTimeWorkRequestBuilder<ReadLaterSyncWorker>()
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build(),
-            )
+            .setConstraints(constraints)
             .build()
 
         workManager.beginUniqueWork(
             "immediate_sync",
             ExistingWorkPolicy.REPLACE,
             feedSync,
-        ).then(readLaterSync).enqueue()
+        ).then(emailSync).then(readLaterSync).enqueue()
     }
 }

@@ -17,9 +17,10 @@ class SubstackAuthInterceptor @Inject constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        val host = request.url.host
+        val host = request.url.host.lowercase()
 
-        if (!host.endsWith("substack.com")) {
+        // Only attach the SID cookie to *.substack.com requests
+        if (!host.endsWith(".substack.com") && host != "substack.com") {
             return chain.proceed(request)
         }
 
@@ -27,7 +28,7 @@ class SubstackAuthInterceptor @Inject constructor(
             preferencesRepository.getSubstackSid().also { cachedSid = it }
         }
 
-        if (sid.isBlank()) {
+        if (sid.isNullOrBlank()) {
             return chain.proceed(request)
         }
 

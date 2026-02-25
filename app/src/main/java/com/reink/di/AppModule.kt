@@ -30,7 +30,15 @@ object AppModule {
             app,
             ReInkDatabase::class.java,
             "reink.db",
-        ).build()
+        )
+            .addMigrations(
+                ReInkDatabase.MIGRATION_1_2,
+                ReInkDatabase.MIGRATION_2_3,
+                ReInkDatabase.MIGRATION_3_4,
+                ReInkDatabase.MIGRATION_4_5,
+                ReInkDatabase.MIGRATION_5_6,
+            )
+            .build()
 
     @Provides
     fun provideFeedDao(db: ReInkDatabase): FeedDao = db.feedDao()

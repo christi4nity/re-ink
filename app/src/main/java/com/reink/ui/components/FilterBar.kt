@@ -64,16 +64,16 @@ private fun FilterChip(
         modifier = modifier,
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
         ),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = if (selected) {
-                MaterialTheme.colorScheme.onSurface
+                MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.surface
             },
             contentColor = if (selected) {
-                MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.onPrimary
             } else {
                 MaterialTheme.colorScheme.onSurface
             },

@@ -11,6 +11,7 @@ import com.reink.data.model.Article
         Index(value = ["feedId"]),
         Index(value = ["publishedAt"]),
         Index(value = ["url"], unique = true),
+        Index(value = ["emailMessageId"]),
     ],
 )
 data class ArticleEntity(
@@ -22,7 +23,9 @@ data class ArticleEntity(
     val publishedAt: Long,
     val summary: String,
     val contentHtml: String,
+    val contentStatus: String = Article.CONTENT_FULL,
     val isRead: Boolean,
+    val emailMessageId: String? = null,
 ) {
     fun toModel(): Article = Article(
         id = id,
@@ -33,7 +36,9 @@ data class ArticleEntity(
         publishedAt = publishedAt,
         summary = summary,
         contentHtml = contentHtml,
+        contentStatus = contentStatus,
         isRead = isRead,
+        emailMessageId = emailMessageId,
     )
 
     companion object {
@@ -46,7 +51,9 @@ data class ArticleEntity(
             publishedAt = article.publishedAt,
             summary = article.summary,
             contentHtml = article.contentHtml,
+            contentStatus = article.contentStatus,
             isRead = article.isRead,
+            emailMessageId = article.emailMessageId,
         )
     }
 }

@@ -32,3 +32,9 @@
 # WorkManager + Hilt
 -keep class * extends androidx.work.Worker
 -keep class * extends androidx.work.ListenableWorker
+
+# Jakarta Mail (IMAP)
+-keep class jakarta.mail.** { *; }
+-keep class com.sun.mail.** { *; }
+-dontwarn jakarta.mail.**
+-dontwarn com.sun.mail.**

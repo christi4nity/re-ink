@@ -8,4 +8,5 @@ sealed class Screen(val route: String, val label: String) {
         fun createRoute(itemType: String, itemId: Long): String =
             "reader/$itemType/$itemId"
     }
+    data object SubstackSignIn : Screen("substack_sign_in", "Sign In")
 }

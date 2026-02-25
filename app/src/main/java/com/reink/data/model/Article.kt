@@ -9,5 +9,15 @@ data class Article(
     val publishedAt: Long,
     val summary: String = "",
     val contentHtml: String = "",
+    val contentStatus: String = CONTENT_FULL,
     val isRead: Boolean = false,
-)
+    val emailMessageId: String? = null,
+) {
+    companion object {
+        const val CONTENT_FULL = "full"
+        const val CONTENT_TRUNCATED = "truncated"
+        const val CONTENT_EXTRACTED = "extracted"
+        const val CONTENT_EMAIL = "email"
+        const val CONTENT_FAILED = "failed"
+    }
+}

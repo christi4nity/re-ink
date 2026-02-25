@@ -17,6 +17,8 @@ work = "2.10.0"
 rss-parser = "6.1.0"
 readability4j = "1.0.8"
 hilt-work = "1.2.0"
+jakarta-mail = "2.0.1"
+security-crypto = "1.1.0-alpha06"
 
 [libraries]
 # Compose
@@ -54,6 +56,12 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 # RSS & Content
 rss-parser = { group = "com.prof18.rssparser", name = "rssparser", version.ref = "rss-parser" }
 readability4j = { group = "net.dankito.readability4j", name = "readability4j", version.ref = "readability4j" }
+
+# Email
+jakarta-mail = { group = "com.sun.mail", name = "jakarta.mail", version.ref = "jakarta-mail" }
+
+# Security
+security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
 
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }

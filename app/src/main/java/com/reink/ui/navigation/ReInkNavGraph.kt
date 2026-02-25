@@ -26,6 +26,7 @@ import com.reink.ui.feed.FeedScreen
 import com.reink.ui.reader.ReaderScreen
 import com.reink.ui.readlater.ReadLaterScreen
 import com.reink.ui.settings.SettingsScreen
+import com.reink.ui.settings.SubstackSignInScreen
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -97,7 +98,6 @@ fun ReInkNavGraph(
                     onArticleClick = { articleId ->
                         navController.navigate(Screen.Reader.createRoute("article", articleId))
                     },
-                    volumeKeyEvents = volumeKeyEvents,
                 )
             }
             composable(Screen.ReadLater.route) {
@@ -108,7 +108,17 @@ fun ReInkNavGraph(
                 )
             }
             composable(Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateToSignIn = {
+                        navController.navigate(Screen.SubstackSignIn.route)
+                    },
+                )
+            }
+            composable(Screen.SubstackSignIn.route) {
+                SubstackSignInScreen(
+                    onBack = { navController.popBackStack() },
+                    onSignInComplete = { navController.popBackStack() },
+                )
             }
             composable(
                 route = Screen.Reader.route,

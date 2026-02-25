@@ -22,4 +22,22 @@ interface FeedDao {
 
     @Query("DELETE FROM feeds WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("UPDATE feeds SET authToken = :authToken, substackSubdomain = :subdomain WHERE id = :id")
+    suspend fun updateAuth(id: Long, authToken: String?, subdomain: String?)
+
+    @Query("UPDATE feeds SET imageUrl = :imageUrl WHERE id = :id")
+    suspend fun updateImageUrl(id: Long, imageUrl: String?)
+
+    @Query("SELECT substackSubdomain FROM feeds WHERE substackSubdomain IS NOT NULL")
+    suspend fun getAllSubdomains(): List<String>
+
+    @Query("UPDATE feeds SET enabledSectionSlugs = :enabledSectionSlugs WHERE id = :id")
+    suspend fun updateSections(id: Long, enabledSectionSlugs: String?)
+
+    @Query("UPDATE feeds SET emailSenderPattern = :pattern WHERE id = :id")
+    suspend fun updateEmailSenderPattern(id: Long, pattern: String?)
+
+    @Query("SELECT * FROM feeds WHERE emailSenderPattern IS NOT NULL")
+    suspend fun getFeedsWithEmailPatterns(): List<FeedEntity>
 }

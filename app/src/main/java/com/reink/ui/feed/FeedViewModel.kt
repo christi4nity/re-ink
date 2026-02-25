@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.reink.data.model.Article
 import com.reink.data.model.Feed
 import com.reink.data.repository.ArticleRepository
-import com.reink.data.repository.ArticleRepository.Companion.PAGE_SIZE
 import com.reink.data.repository.FeedRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,7 +13,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -35,9 +33,6 @@ data class FeedUiState(
     val unreadOnly: Boolean = false,
     val isSyncing: Boolean = false,
     val error: String? = null,
-    val currentPage: Int = 0,
-    val hasPrevious: Boolean = false,
-    val hasNext: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -49,18 +44,17 @@ class FeedViewModel @Inject constructor(
 
     private val selectedFeedId = MutableStateFlow<Long?>(null)
     private val unreadOnly = MutableStateFlow(false)
-    private val currentPage = MutableStateFlow(0)
     private val isSyncing = MutableStateFlow(false)
     private val error = MutableStateFlow<String?>(null)
 
-    private data class FilterState(val feedId: Long?, val unreadOnly: Boolean, val page: Int)
+    private data class FilterState(val feedId: Long?, val unreadOnly: Boolean)
 
-    private val filterState = combine(selectedFeedId, unreadOnly, currentPage) { feedId, unread, page ->
-        FilterState(feedId, unread, page)
+    private val filterState = combine(selectedFeedId, unreadOnly) { feedId, unread ->
+        FilterState(feedId, unread)
     }
 
-    private val articlesFlow = filterState.flatMapLatest { (feedId, unread, page) ->
-        articleRepository.observe(feedId, unread, page).map { articles -> articles to page }
+    private val articlesFlow = filterState.flatMapLatest { (feedId, unread) ->
+        articleRepository.observe(feedId, unread)
     }
 
     val uiState: StateFlow<FeedUiState> = combine(
@@ -69,22 +63,14 @@ class FeedViewModel @Inject constructor(
         filterState,
         isSyncing,
         error,
-    ) { articlesWithPage, feeds, filter, syncing, err ->
-        val (articles, page) = articlesWithPage
-        val hasNext = articles.size > PAGE_SIZE
-        val displayArticles = if (hasNext) articles.dropLast(1) else articles
-        val sections = groupByDate(displayArticles)
-
+    ) { articles, feeds, filter, syncing, err ->
         FeedUiState(
-            sections = sections,
+            sections = groupByDate(articles),
             feeds = feeds,
             selectedFeedId = filter.feedId,
             unreadOnly = filter.unreadOnly,
             isSyncing = syncing,
             error = err,
-            currentPage = page,
-            hasPrevious = page > 0,
-            hasNext = hasNext,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -94,24 +80,10 @@ class FeedViewModel @Inject constructor(
 
     fun selectFeed(feedId: Long?) {
         selectedFeedId.value = feedId
-        currentPage.value = 0
     }
 
     fun toggleUnreadOnly() {
         unreadOnly.value = !unreadOnly.value
-        currentPage.value = 0
-    }
-
-    fun nextPage() {
-        if (uiState.value.hasNext) {
-            currentPage.value = currentPage.value + 1
-        }
-    }
-
-    fun previousPage() {
-        if (uiState.value.hasPrevious) {
-            currentPage.value = currentPage.value - 1
-        }
     }
 
     fun sync() {
@@ -125,12 +97,24 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun markAllRead() {
+        viewModelScope.launch {
+            val startOfToday = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            articleRepository.markAllReadBefore(startOfToday)
+        }
+    }
+
     fun dismissError() {
         error.value = null
     }
 
     companion object {
-        private val dayFormat = SimpleDateFormat("EEEE", Locale.US)
+        private val dayWithDateFormat = SimpleDateFormat("EEEE, MMM d", Locale.US)
         private val dateFormat = SimpleDateFormat("MMM d", Locale.US)
 
         fun groupByDate(articles: List<Article>): List<ArticleSection> {
@@ -146,10 +130,12 @@ class FeedViewModel @Inject constructor(
                 val articleDay = clearTime(articleCal)
 
                 when {
-                    articleDay >= today -> "Today"
-                    articleDay >= yesterday -> "Yesterday"
+                    articleDay >= today ->
+                        "Today, ${dateFormat.format(Date(article.publishedAt))}"
+                    articleDay >= yesterday ->
+                        "Yesterday, ${dateFormat.format(Date(article.publishedAt))}"
                     articleDay >= today - 6 * 24 * 60 * 60 * 1000L ->
-                        dayFormat.format(Date(article.publishedAt))
+                        dayWithDateFormat.format(Date(article.publishedAt))
                     else -> dateFormat.format(Date(article.publishedAt))
                 }
             }.map { (header, items) -> ArticleSection(dateHeader = header, articles = items) }

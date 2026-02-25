@@ -41,6 +41,15 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += listOf(
+                "META-INF/NOTICE.md",
+                "META-INF/LICENSE.md",
+            )
+        }
+    }
 }
 
 dependencies {
@@ -80,6 +89,12 @@ dependencies {
     // RSS & Content
     implementation(libs.rss.parser)
     implementation(libs.readability4j)
+
+    // Email (IMAP)
+    implementation(libs.jakarta.mail)
+
+    // Encrypted credentials
+    implementation(libs.security.crypto)
 
     // DataStore
     implementation(libs.datastore.preferences)
