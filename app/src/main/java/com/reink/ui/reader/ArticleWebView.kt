@@ -268,6 +268,7 @@ private class ExtractionBridge(
 fun ArticleWebView(
     contentHtml: String,
     preferences: ReadingPreferences,
+    verticalInsetPx: Int = 56,
     onLinkTapped: (String) -> Unit,
     currentPage: Int = 0,
     onPageCountChanged: (Int) -> Unit = {},
@@ -275,7 +276,7 @@ fun ArticleWebView(
     onContentTapped: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val cssOverrides = buildCssOverrides(preferences)
+    val cssOverrides = buildCssOverrides(preferences, verticalInsetPx)
     val wrappedHtml = wrapHtml(contentHtml, cssOverrides)
     val isPaginated = preferences.paginationMode == "paginated"
 
@@ -413,7 +414,7 @@ fun ArticleWebView(
                 lastLoadedHtml = wrappedHtml
             } else if (isPaginated) {
                 webView.evaluateJavascript(
-                    "if(document.body) document.body.scrollLeft = ${currentPage} * window.innerWidth;",
+                    "(function(){var c=document.getElementById('col-wrapper')||document.body;if(c)c.scrollLeft=${currentPage}*document.documentElement.clientWidth;})();",
                     null,
                 )
             }
@@ -428,54 +429,154 @@ fun ArticleWebView(
  * Column math:
  *   column-width = vw - 2*margin  (content per page)
  *   column-gap   = 2*margin       (right margin + left margin between pages)
- *   body padding = margin left/right (first/last page edges)
+ *   body padding = margin left/right + fitted top/bottom space
  *   Page stride  = column-width + gap = vw
  *
- * Key: do NOT constrain body width — let columns overflow naturally so
- * scrollWidth reflects the total column extent. Use scrollLeft (not
- * window.scrollTo) because overflow:hidden on html blocks scrollTo.
+ * Key: body handles outer spacing; #col-wrapper is the column container.
+ * We page by setting scrollLeft on #col-wrapper.
  */
 private const val PAGINATION_SETUP_JS = """
 (function() {
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
+    var h = document.documentElement;
+    h.style.height = '100%';
+    h.style.overflow = 'hidden';
+    h.style.margin = '0';
+    h.style.padding = '0';
+    h.style.backgroundColor = 'red';
+
+    var b = document.body;
+    var c = document.getElementById('col-wrapper');
+    if (!b || !c) return;
+
+    var vh = h.clientHeight;
+    var vw = h.clientWidth;
+    var overlayInset = 6;
+    var measuredOverlayInset = parseFloat(
+        getComputedStyle(h).getPropertyValue('--reader-overlay-height')
+    ) || 56;
+    var dpr = window.devicePixelRatio || 1;
+    var extraVerticalInset = measuredOverlayInset / dpr;
+    var usableVh = Math.max(0, vh - overlayInset);
     var margin = parseInt(
-        getComputedStyle(document.documentElement)
-            .getPropertyValue('--margin-horizontal')
+        getComputedStyle(h).getPropertyValue('--margin-horizontal')
     ) || 16;
     var colWidth = vw - 2 * margin;
     var colGap = 2 * margin;
+    var basePad = Math.max(0, extraVerticalInset);
+    var contentHeight = Math.max(0, usableVh - 2 * basePad);
 
-    console.log('ReInk setup vw=' + vw + ' vh=' + vh + ' margin=' + margin + ' colWidth=' + colWidth);
-
-    var b = document.body;
     b.style.height = vh + 'px';
-    b.style.padding = '12px ' + margin + 'px';
-    b.style.columnWidth = colWidth + 'px';
-    b.style.webkitColumnWidth = colWidth + 'px';
-    b.style.columnGap = colGap + 'px';
-    b.style.webkitColumnGap = colGap + 'px';
-    b.style.columnFill = 'auto';
-    b.style.webkitColumnFill = 'auto';
+    b.style.margin = '0';
+    b.style.paddingTop = basePad + 'px';
+    b.style.paddingRight = margin + 'px';
+    b.style.paddingBottom = (basePad + overlayInset) + 'px';
+    b.style.paddingLeft = margin + 'px';
     b.style.overflow = 'hidden';
 
-    var imgs = b.querySelectorAll('img, video, iframe, figure');
-    for (var i = 0; i < imgs.length; i++) {
-        imgs[i].style.breakInside = 'avoid';
-        imgs[i].style.maxHeight = (vh - 2 * vertPad) + 'px';
+    c.style.width = '100%';
+    c.style.height = contentHeight + 'px';
+    c.style.margin = '0';
+    c.style.padding = '0';
+    c.style.columnWidth = colWidth + 'px';
+    c.style.webkitColumnWidth = colWidth + 'px';
+    c.style.columnGap = colGap + 'px';
+    c.style.webkitColumnGap = colGap + 'px';
+    c.style.columnFill = 'auto';
+    c.style.webkitColumnFill = 'auto';
+    c.style.overflow = 'hidden';
+
+    var media = c.querySelectorAll('img, video, iframe, figure');
+    for (var i = 0; i < media.length; i++) {
+        media[i].style.breakInside = 'avoid';
+        media[i].style.maxHeight = contentHeight + 'px';
     }
 
-    document.documentElement.style.height = vh + 'px';
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
+    function measureFirstColumnGaps() {
+        var cRect = c.getBoundingClientRect();
+        var colLeft = cRect.left;
+        var colRight = colLeft + colWidth;
+        var colTop = cRect.top;
+        var colBottom = colTop + contentHeight;
+        var topMost = Infinity;
+        var bottomMost = -Infinity;
+
+        function considerRect(rect) {
+            if (rect.width < 1 || rect.height < 1) return;
+            if (rect.right <= colLeft + 0.5 || rect.left >= colRight - 0.5) return;
+
+            var clippedTop = Math.max(rect.top, colTop);
+            var clippedBottom = Math.min(rect.bottom, colBottom);
+            if (clippedBottom - clippedTop < 1) return;
+
+            if (clippedTop < topMost) topMost = clippedTop;
+            if (clippedBottom > bottomMost) bottomMost = clippedBottom;
+        }
+
+        function consumeRects(rectList) {
+            for (var i = 0; i < rectList.length; i++) {
+                considerRect(rectList[i]);
+            }
+        }
+
+        var tw = document.createTreeWalker(
+            c,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    return node.nodeValue && /\S/.test(node.nodeValue)
+                        ? NodeFilter.FILTER_ACCEPT
+                        : NodeFilter.FILTER_REJECT;
+                }
+            }
+        );
+        var textNode;
+        while ((textNode = tw.nextNode())) {
+            var tr = document.createRange();
+            tr.selectNodeContents(textNode);
+            consumeRects(tr.getClientRects());
+        }
+
+        var mediaLike = c.querySelectorAll('img, video, iframe, figure, svg, table, pre, blockquote, hr');
+        for (var m = 0; m < mediaLike.length; m++) {
+            consumeRects(mediaLike[m].getClientRects());
+        }
+
+        if (!isFinite(topMost) || !isFinite(bottomMost)) return null;
+        return {
+            top: Math.max(0, topMost - colTop),
+            bottom: Math.max(0, colBottom - bottomMost)
+        };
+    }
+
+    function rebalanceVerticalPadding() {
+        var gaps = measureFirstColumnGaps();
+        if (!gaps) return;
+        var delta = (gaps.bottom - gaps.top) / 2;
+        if (Math.abs(delta) < 0.5) return;
+
+        var minTopPad = basePad;
+        var minBottomPad = basePad + overlayInset;
+        var topPad = basePad + delta;
+        var bottomPad = (basePad + overlayInset) - delta;
+        if (topPad < 0) {
+            bottomPad += topPad;
+            topPad = 0;
+        }
+        if (bottomPad < minBottomPad) {
+            topPad -= (minBottomPad - bottomPad);
+            bottomPad = minBottomPad;
+        }
+        if (topPad < minTopPad) topPad = minTopPad;
+
+        b.style.paddingTop = topPad + 'px';
+        b.style.paddingBottom = bottomPad + 'px';
+    }
 
     requestAnimationFrame(function() {
         setTimeout(function() {
-            var sw = b.scrollWidth;
-            var sh = b.scrollHeight;
+            rebalanceVerticalPadding();
+            var sw = c.scrollWidth;
             var pageCount = Math.max(1, Math.round(sw / vw));
-            console.log('ReInk pages: sw=' + sw + ' sh=' + sh + ' vw=' + vw + ' count=' + pageCount);
             ReInk.reportPageCount(pageCount);
         }, 50);
     });
@@ -509,7 +610,7 @@ private class PageBridge(
     }
 }
 
-private fun buildCssOverrides(prefs: ReadingPreferences): String {
+private fun buildCssOverrides(prefs: ReadingPreferences, verticalInsetPx: Int): String {
     val rootVars = """
         :root {
             --font-family: '${prefs.fontFamily}', serif;
@@ -517,6 +618,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
             --line-height: ${prefs.lineHeight};
             --margin-horizontal: ${prefs.marginHorizontal}px;
             --text-align: ${prefs.textAlign};
+            --reader-overlay-height: ${verticalInsetPx}px;
         }
     """.trimIndent()
 
@@ -526,15 +628,20 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
         html {
             margin: 0;
             padding: 0;
+            height: 100%;
             overflow: hidden;
         }
         body {
             margin: 0;
             overflow: hidden;
+        }
+        #col-wrapper {
+            margin: 0;
+            padding: 0;
             -webkit-column-fill: auto;
             column-fill: auto;
         }
-        img, video, iframe, figure {
+        #col-wrapper img, #col-wrapper video, #col-wrapper iframe, #col-wrapper figure {
             break-inside: avoid;
         }
     """.trimIndent()
@@ -552,7 +659,9 @@ private fun wrapHtml(content: String, cssOverrides: String): String = """
         <style>$cssOverrides</style>
     </head>
     <body>
-        $content
+        <div id="col-wrapper">
+            $content
+        </div>
         <script>
         document.addEventListener('click', function(e) {
             if (e.target.closest('a')) return;

@@ -39,7 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +68,7 @@ fun ReaderScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val defaultOverlayInsetPx = with(LocalDensity.current) { 56.dp.roundToPx() }
 
     var pendingLinkUrl by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
@@ -78,6 +81,7 @@ fun ReaderScreen(
     // Overlay visibility — tap content to toggle
     var showOverlay by remember { mutableStateOf(false) }
     var showPreferences by remember { mutableStateOf(false) }
+    var overlayBarHeightPx by remember { mutableIntStateOf(defaultOverlayInsetPx) }
 
     // Reset page when content changes
     LaunchedEffect(state.contentHtml) {
@@ -132,6 +136,7 @@ fun ReaderScreen(
                 ArticleWebView(
                     contentHtml = state.contentHtml,
                     preferences = state.preferences,
+                    verticalInsetPx = overlayBarHeightPx,
                     onLinkTapped = { url -> pendingLinkUrl = url },
                     currentPage = currentPage,
                     onPageCountChanged = { totalPages = it },
@@ -158,6 +163,7 @@ fun ReaderScreen(
                     title = state.title,
                     onBack = onBack,
                     onPreferencesClick = { showPreferences = true },
+                    onHeightMeasured = { overlayBarHeightPx = it },
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
@@ -213,6 +219,7 @@ private fun ReaderOverlayTopBar(
     title: String,
     onBack: () -> Unit,
     onPreferencesClick: () -> Unit,
+    onHeightMeasured: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant
@@ -220,6 +227,7 @@ private fun ReaderOverlayTopBar(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
+            .onSizeChanged { size -> onHeightMeasured(size.height) }
             .background(MaterialTheme.colorScheme.surface)
             .drawBehind {
                 drawLine(
