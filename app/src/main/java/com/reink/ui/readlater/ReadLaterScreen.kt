@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -41,6 +42,16 @@ fun ReadLaterScreen(
                     text = "re:ink",
                     style = MaterialTheme.typography.titleLarge,
                 )
+                TextButton(
+                    onClick = { viewModel.sync() },
+                    enabled = !state.isSyncing,
+                ) {
+                    Text(
+                        text = if (state.isSyncing) "Syncing\u2026" else "Sync",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         },
     ) { innerPadding ->
