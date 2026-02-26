@@ -465,9 +465,8 @@ private const val PAGINATION_SETUP_JS = """
     var colGap = 2 * margin;
     var contentHeight = 0;
 
-    b.style.height = '100%';
-    b.style.minHeight = vh + 'px';
     b.style.margin = '0';
+    b.style.setProperty('background-color', '#ffffff', 'important');
     b.style.paddingRight = margin + 'px';
     b.style.paddingLeft = margin + 'px';
     b.style.overflow = 'hidden';
@@ -475,10 +474,6 @@ private const val PAGINATION_SETUP_JS = """
     c.style.width = '100%';
     c.style.margin = '0';
     c.style.padding = '0';
-    c.style.columnWidth = colWidth + 'px';
-    c.style.webkitColumnWidth = colWidth + 'px';
-    c.style.columnGap = colGap + 'px';
-    c.style.webkitColumnGap = colGap + 'px';
     c.style.columnFill = 'auto';
     c.style.webkitColumnFill = 'auto';
     c.style.overflow = 'hidden';
@@ -486,6 +481,19 @@ private const val PAGINATION_SETUP_JS = """
     var media = c.querySelectorAll('img, video, iframe, figure');
     for (var i = 0; i < media.length; i++) {
         media[i].style.breakInside = 'avoid';
+    }
+
+    function syncViewportMetrics() {
+        vh = h.clientHeight;
+        vw = h.clientWidth;
+        colWidth = vw - 2 * margin;
+        colGap = 2 * margin;
+        b.style.height = vh + 'px';
+        b.style.minHeight = vh + 'px';
+        c.style.columnWidth = colWidth + 'px';
+        c.style.webkitColumnWidth = colWidth + 'px';
+        c.style.columnGap = colGap + 'px';
+        c.style.webkitColumnGap = colGap + 'px';
     }
 
     function applyVerticalPadding(topPad, bottomPad) {
@@ -499,6 +507,7 @@ private const val PAGINATION_SETUP_JS = """
         }
     }
 
+    syncViewportMetrics();
     applyVerticalPadding(basePad, basePad + bottomSafetyInset);
 
     function measureFirstColumnGaps() {
@@ -581,13 +590,22 @@ private const val PAGINATION_SETUP_JS = """
         applyVerticalPadding(topPad, bottomPad);
     }
 
-    requestAnimationFrame(function() {
-        setTimeout(function() {
-            rebalanceVerticalPadding();
-            var sw = c.scrollWidth;
-            var pageCount = Math.max(1, Math.round(sw / vw));
+    var lastReportedPageCount = -1;
+    function finalizePagination() {
+        syncViewportMetrics();
+        applyVerticalPadding(basePad, basePad + bottomSafetyInset);
+        rebalanceVerticalPadding();
+        var sw = c.scrollWidth;
+        var pageCount = Math.max(1, Math.round(sw / vw));
+        if (pageCount !== lastReportedPageCount) {
+            lastReportedPageCount = pageCount;
             ReInk.reportPageCount(pageCount);
-        }, 50);
+        }
+    }
+
+    requestAnimationFrame(function() {
+        setTimeout(finalizePagination, 50);
+        setTimeout(finalizePagination, 250);
     });
 })();
 """
@@ -642,6 +660,8 @@ private fun buildCssOverrides(prefs: ReadingPreferences, verticalInsetPx: Int): 
         }
         body {
             margin: 0;
+            min-height: 100%;
+            background: #ffffff !important;
             overflow: hidden;
         }
         #col-wrapper {
