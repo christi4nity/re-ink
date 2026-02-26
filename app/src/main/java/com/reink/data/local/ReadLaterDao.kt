@@ -31,4 +31,7 @@ interface ReadLaterDao {
 
     @Query("SELECT COUNT(*) FROM read_later WHERE url = :url")
     suspend fun countByUrl(url: String): Int
+
+    @Query("UPDATE read_later SET fetchStatus = 'PENDING' WHERE fetchStatus = 'FAILED'")
+    suspend fun resetFailed(): Int
 }

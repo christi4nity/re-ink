@@ -45,6 +45,7 @@ class ReadLaterRepository @Inject constructor(
         readLaterDao.deleteById(id)
 
     suspend fun fetchPendingContent(): Int {
+        readLaterDao.resetFailed()
         val pending = readLaterDao.getByStatus(FetchStatus.PENDING.name)
         var fetched = 0
 
