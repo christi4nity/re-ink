@@ -1,5 +1,6 @@
 package com.reink.data.remote
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.dankito.readability4j.Readability4J
@@ -40,7 +41,7 @@ class ArticleExtractor @Inject constructor(
                     ?: throw IllegalStateException("Empty response from $url")
 
                 if (looksLikeAccessInterstitial(html)) {
-                    throw IllegalStateException("Blocked by anti-bot or JS challenge at $finalUrl")
+                    Log.w(TAG, "Possible anti-bot interstitial at $finalUrl")
                 }
 
                 val readability = Readability4J(finalUrl, html)
@@ -53,12 +54,8 @@ class ArticleExtractor @Inject constructor(
                     throw IllegalStateException("No extractable article content at $finalUrl")
                 }
 
-                if (looksLikeAccessInterstitial(extractedContent)) {
-                    throw IllegalStateException("Fetched challenge/interstitial content at $finalUrl")
-                }
-
                 if (looksLikelyPaywalled(html, extractedContent)) {
-                    throw IllegalStateException("Content appears paywalled at $finalUrl")
+                    Log.w(TAG, "Content may be paywalled at $finalUrl (${extractedContent.length} chars)")
                 }
 
                 ExtractedArticle(
@@ -71,6 +68,8 @@ class ArticleExtractor @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "ArticleExtractor"
+
         private const val BROWSER_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; Pixel 7) " +
                 "AppleWebKit/537.36 (KHTML, like Gecko) " +
