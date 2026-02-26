@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.reink.data.model.FetchStatus
 import com.reink.data.model.ReadLaterItem
+import com.reink.data.remote.ArticleExtractor
 
 @Entity(tableName = "read_later")
 data class ReadLaterEntity(
@@ -26,7 +27,7 @@ data class ReadLaterEntity(
         savedAt = savedAt,
         fetchStatus = FetchStatus.valueOf(fetchStatus),
         isRead = isRead,
-        sourceDomain = sourceDomain,
+        sourceDomain = sourceDomain ?: ArticleExtractor.extractDomain(url),
     )
 
     companion object {
