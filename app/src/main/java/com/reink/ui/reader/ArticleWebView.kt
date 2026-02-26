@@ -450,31 +450,29 @@ private const val PAGINATION_SETUP_JS = """
 
     var vh = h.clientHeight;
     var vw = h.clientWidth;
-    var overlayInset = 6;
+    var progressBarHeight = 6;
     var measuredOverlayInset = parseFloat(
         getComputedStyle(h).getPropertyValue('--reader-overlay-height')
     ) || 56;
     var dpr = window.devicePixelRatio || 1;
     var extraVerticalInset = measuredOverlayInset / dpr;
-    var usableVh = Math.max(0, vh - overlayInset);
+    var basePad = Math.max(0, extraVerticalInset);
+    var bottomSafetyInset = Math.max(0, progressBarHeight - basePad);
     var margin = parseInt(
         getComputedStyle(h).getPropertyValue('--margin-horizontal')
     ) || 16;
     var colWidth = vw - 2 * margin;
     var colGap = 2 * margin;
-    var basePad = Math.max(0, extraVerticalInset);
-    var contentHeight = Math.max(0, usableVh - 2 * basePad);
+    var contentHeight = 0;
 
-    b.style.height = vh + 'px';
+    b.style.height = '100%';
+    b.style.minHeight = vh + 'px';
     b.style.margin = '0';
-    b.style.paddingTop = basePad + 'px';
     b.style.paddingRight = margin + 'px';
-    b.style.paddingBottom = (basePad + overlayInset) + 'px';
     b.style.paddingLeft = margin + 'px';
     b.style.overflow = 'hidden';
 
     c.style.width = '100%';
-    c.style.height = contentHeight + 'px';
     c.style.margin = '0';
     c.style.padding = '0';
     c.style.columnWidth = colWidth + 'px';
@@ -488,8 +486,20 @@ private const val PAGINATION_SETUP_JS = """
     var media = c.querySelectorAll('img, video, iframe, figure');
     for (var i = 0; i < media.length; i++) {
         media[i].style.breakInside = 'avoid';
-        media[i].style.maxHeight = contentHeight + 'px';
     }
+
+    function applyVerticalPadding(topPad, bottomPad) {
+        b.style.paddingTop = topPad + 'px';
+        b.style.paddingBottom = bottomPad + 'px';
+        var bodyHeight = b.clientHeight || vh;
+        contentHeight = Math.max(0, bodyHeight - topPad - bottomPad);
+        c.style.height = contentHeight + 'px';
+        for (var i = 0; i < media.length; i++) {
+            media[i].style.maxHeight = contentHeight + 'px';
+        }
+    }
+
+    applyVerticalPadding(basePad, basePad + bottomSafetyInset);
 
     function measureFirstColumnGaps() {
         var cRect = c.getBoundingClientRect();
@@ -555,9 +565,9 @@ private const val PAGINATION_SETUP_JS = """
         if (Math.abs(delta) < 0.5) return;
 
         var minTopPad = basePad;
-        var minBottomPad = basePad + overlayInset;
+        var minBottomPad = basePad + bottomSafetyInset;
         var topPad = basePad + delta;
-        var bottomPad = (basePad + overlayInset) - delta;
+        var bottomPad = (basePad + bottomSafetyInset) - delta;
         if (topPad < 0) {
             bottomPad += topPad;
             topPad = 0;
@@ -568,8 +578,7 @@ private const val PAGINATION_SETUP_JS = """
         }
         if (topPad < minTopPad) topPad = minTopPad;
 
-        b.style.paddingTop = topPad + 'px';
-        b.style.paddingBottom = bottomPad + 'px';
+        applyVerticalPadding(topPad, bottomPad);
     }
 
     requestAnimationFrame(function() {

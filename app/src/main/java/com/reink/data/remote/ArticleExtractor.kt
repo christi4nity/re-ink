@@ -64,7 +64,7 @@ class ArticleExtractor @Inject constructor(
                 ExtractedArticle(
                     title = extractedTitle,
                     contentHtml = extractedContent,
-                    sourceDomain = extractDomain(finalUrl),
+                    sourceDomain = extractSiteName(html) ?: extractDomain(finalUrl),
                 )
             }
         }
@@ -102,6 +102,16 @@ class ArticleExtractor @Inject constructor(
             "membership required",
             "already a subscriber",
         )
+
+        private val OG_SITE_NAME_REGEX =
+            Regex("""<meta[^>]+property\s*=\s*["']og:site_name["'][^>]+content\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+        private val OG_SITE_NAME_REVERSE_REGEX =
+            Regex("""<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:site_name["']""", RegexOption.IGNORE_CASE)
+
+        fun extractSiteName(html: String): String? {
+            val match = OG_SITE_NAME_REGEX.find(html) ?: OG_SITE_NAME_REVERSE_REGEX.find(html)
+            return match?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+        }
 
         fun extractDomain(url: String): String =
             runCatching { URI(url).host?.removePrefix("www.") ?: "" }.getOrDefault("")

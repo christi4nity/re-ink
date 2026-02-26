@@ -84,20 +84,51 @@ a {
 }
 
 img {
-    max-width: 100%;
-    height: auto;
-    margin: 1em 0;
+    display: block;
+    max-width: 100% !important;
+    width: auto;
+    height: auto !important;
+    margin: 1em auto;
+    border: 0;
+    outline: 0;
+}
+
+/* Override inline dimensions from newsletter HTML */
+img[width], img[height] {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Hide broken/empty images instead of showing placeholder outlines */
+img[src=""], img:not([src]) {
+    display: none;
+}
+
+/* Remove link borders around images */
+a img {
+    border: 0;
+    outline: 0;
 }
 
 figure {
     margin: 1em 0;
     padding: 0;
+    overflow: hidden;
+}
+
+figure img {
+    width: 100%;
 }
 
 figcaption {
     font-size: 0.85em;
     color: #666666;
     margin-top: 0.5em;
+}
+
+picture {
+    display: block;
+    max-width: 100%;
 }
 
 blockquote {
