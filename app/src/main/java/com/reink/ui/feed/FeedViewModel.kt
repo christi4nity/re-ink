@@ -2,9 +2,11 @@ package com.reink.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reink.data.email.EmailCredentialsStore
 import com.reink.data.model.Article
 import com.reink.data.model.Feed
 import com.reink.data.repository.ArticleRepository
+import com.reink.data.repository.EmailSyncRepository
 import com.reink.data.repository.FeedRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,6 +42,8 @@ data class FeedUiState(
 class FeedViewModel @Inject constructor(
     private val articleRepository: ArticleRepository,
     private val feedRepository: FeedRepository,
+    private val emailSyncRepository: EmailSyncRepository,
+    private val emailCredentialsStore: EmailCredentialsStore,
 ) : ViewModel() {
 
     private val selectedFeedId = MutableStateFlow<Long?>(null)
@@ -91,7 +95,12 @@ class FeedViewModel @Inject constructor(
             isSyncing.value = true
             error.value = null
             articleRepository.syncAllFeeds().onFailure { e ->
-                error.value = e.message ?: "Sync failed"
+                error.value = e.message ?: "Feed sync failed"
+            }
+            if (emailCredentialsStore.isConfigured()) {
+                emailSyncRepository.syncEmails().onFailure { e ->
+                    error.value = e.message ?: "Email sync failed"
+                }
             }
             isSyncing.value = false
         }
