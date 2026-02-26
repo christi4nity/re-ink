@@ -4,6 +4,7 @@ import com.reink.data.local.ReadLaterDao
 import com.reink.data.local.ReadLaterEntity
 import com.reink.data.model.FetchStatus
 import com.reink.data.model.ReadLaterItem
+import android.util.Log
 import com.reink.data.remote.ArticleExtractor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -65,7 +66,8 @@ class ReadLaterRepository @Inject constructor(
                     )
                     fetched++
                 },
-                onFailure = {
+                onFailure = { error ->
+                    Log.e("ReadLater", "Failed to extract: ${entity.url}", error)
                     readLaterDao.updateContent(
                         id = entity.id,
                         status = FetchStatus.FAILED.name,

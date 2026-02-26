@@ -18,10 +18,11 @@ class ArticleExtractor @Inject constructor(
     suspend fun extract(url: String): Result<ExtractedArticle> = runCatching {
         val request = Request.Builder().url(url).build()
         val response = okHttpClient.newCall(request).execute()
+        val finalUrl = response.request.url.toString()
         val html = response.body?.string()
             ?: throw IllegalStateException("Empty response from $url")
 
-        val readability = Readability4J(url, html)
+        val readability = Readability4J(finalUrl, html)
         val article = readability.parse()
 
         ExtractedArticle(
