@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.reink.ui.components.DateHeader
 import com.reink.ui.components.EmptyState
 
 @Composable
@@ -60,22 +61,27 @@ fun ReadLaterScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            if (state.items.isEmpty()) {
+            if (state.sections.isEmpty()) {
                 EmptyState(message = "No saved articles yet.")
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(
-                        items = state.items,
-                        key = { it.id },
-                    ) { item ->
-                        ReadLaterListItem(
-                            item = item,
-                            onClick = { onItemClick(item.id) },
-                            onRemove = { viewModel.remove(item.id) },
-                        )
+                    state.sections.forEachIndexed { index, section ->
+                        item(key = "header_${index}_${section.dateHeader}") {
+                            DateHeader(title = section.dateHeader)
+                        }
+                        items(
+                            items = section.items,
+                            key = { it.id },
+                        ) { item ->
+                            ReadLaterListItem(
+                                item = item,
+                                onClick = { onItemClick(item.id) },
+                                onRemove = { viewModel.remove(item.id) },
+                            )
+                        }
                     }
                 }
             }

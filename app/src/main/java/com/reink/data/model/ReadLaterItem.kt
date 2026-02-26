@@ -9,4 +9,5 @@ data class ReadLaterItem(
     val savedAt: Long = System.currentTimeMillis(),
     val fetchStatus: FetchStatus = FetchStatus.PENDING,
     val isRead: Boolean = false,
+    val sourceDomain: String? = null,
 )

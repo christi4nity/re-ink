@@ -15,6 +15,7 @@ data class ReadLaterEntity(
     val savedAt: Long,
     val fetchStatus: String,
     val isRead: Boolean,
+    val sourceDomain: String? = null,
 ) {
     fun toModel(): ReadLaterItem = ReadLaterItem(
         id = id,
@@ -25,6 +26,7 @@ data class ReadLaterEntity(
         savedAt = savedAt,
         fetchStatus = FetchStatus.valueOf(fetchStatus),
         isRead = isRead,
+        sourceDomain = sourceDomain,
     )
 
     companion object {
@@ -37,6 +39,7 @@ data class ReadLaterEntity(
             savedAt = item.savedAt,
             fetchStatus = item.fetchStatus.name,
             isRead = item.isRead,
+            sourceDomain = item.sourceDomain,
         )
     }
 }

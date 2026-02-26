@@ -55,6 +55,7 @@ class ReadLaterRepository @Inject constructor(
                 status = FetchStatus.FETCHING.name,
                 title = entity.title,
                 contentHtml = entity.contentHtml,
+                sourceDomain = entity.sourceDomain,
             )
 
             articleExtractor.extract(entity.url).fold(
@@ -64,6 +65,7 @@ class ReadLaterRepository @Inject constructor(
                         status = FetchStatus.FETCHED.name,
                         title = extracted.title,
                         contentHtml = extracted.contentHtml,
+                        sourceDomain = extracted.sourceDomain,
                     )
                     fetched++
                 },
@@ -74,6 +76,7 @@ class ReadLaterRepository @Inject constructor(
                         status = FetchStatus.FAILED.name,
                         title = entity.title,
                         contentHtml = entity.contentHtml,
+                        sourceDomain = entity.sourceDomain,
                     )
                 },
             )

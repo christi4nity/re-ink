@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [FeedEntity::class, ArticleEntity::class, ReadLaterEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class ReInkDatabase : RoomDatabase() {
@@ -56,6 +56,12 @@ abstract class ReInkDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE articles ADD COLUMN emailMessageId TEXT DEFAULT NULL")
                 db.execSQL("CREATE INDEX index_articles_emailMessageId ON articles(emailMessageId)")
                 db.execSQL("ALTER TABLE feeds ADD COLUMN emailSenderPattern TEXT DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE read_later ADD COLUMN sourceDomain TEXT DEFAULT NULL")
             }
         }
     }
