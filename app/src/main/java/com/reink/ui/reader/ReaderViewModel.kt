@@ -208,6 +208,12 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    fun updateReadingPreferences(prefs: ReadingPreferences) {
+        viewModelScope.launch {
+            preferencesRepository.updateReadingPreferences(prefs)
+        }
+    }
+
     fun dismissSavedConfirmation() {
         savedForLater.value = false
     }

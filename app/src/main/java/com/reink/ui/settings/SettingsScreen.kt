@@ -76,13 +76,6 @@ fun SettingsScreen(
             }
 
             item {
-                ReadingPreferencesSection(
-                    preferences = state.readingPreferences,
-                    onPreferencesChanged = { viewModel.updateReadingPreferences(it) },
-                )
-            }
-
-            item {
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }

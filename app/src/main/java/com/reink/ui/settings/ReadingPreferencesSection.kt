@@ -36,12 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reink.data.model.ReadingPreferences
 
-private val readingModeOptions = listOf(
+internal val readingModeOptions = listOf(
     "scroll" to "Scroll",
     "paginated" to "Paginated",
 )
-private val fontOptions = listOf("Literata", "Source Serif 4", "Atkinson Hyperlegible")
-private val alignOptions = listOf(
+internal val fontOptions = listOf("Literata", "Source Serif 4", "Atkinson Hyperlegible")
+internal val alignOptions = listOf(
     "left" to "Left",
     "center" to "Center",
     "right" to "Right",
@@ -174,7 +174,7 @@ fun ReadingPreferencesSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FontDropdown(
+internal fun FontDropdown(
     selected: String,
     onSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -229,7 +229,7 @@ private fun FontDropdown(
 }
 
 @Composable
-private fun ReadingModePicker(
+internal fun ReadingModePicker(
     selected: String,
     onSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -278,7 +278,7 @@ private fun ReadingModePicker(
 }
 
 @Composable
-private fun AlignmentPicker(
+internal fun AlignmentPicker(
     selected: String,
     onSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -327,7 +327,7 @@ private fun AlignmentPicker(
 }
 
 @Composable
-private fun LabeledSlider(
+internal fun LabeledSlider(
     label: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
@@ -364,13 +364,13 @@ private fun LabeledSlider(
     }
 }
 
-private val fontAssetPaths = mapOf(
+internal val fontAssetPaths = mapOf(
     "Literata" to ("fonts/Literata-Regular.ttf" to "fonts/Literata-Bold.ttf"),
     "Source Serif 4" to ("fonts/SourceSerif4-Regular.ttf" to "fonts/SourceSerif4-Bold.ttf"),
     "Atkinson Hyperlegible" to ("fonts/AtkinsonHyperlegible-Regular.ttf" to "fonts/AtkinsonHyperlegible-Bold.ttf"),
 )
 
-private fun fontFamilyFromAssets(fontName: String, assetManager: AssetManager): FontFamily {
+internal fun fontFamilyFromAssets(fontName: String, assetManager: AssetManager): FontFamily {
     val paths = fontAssetPaths[fontName] ?: return FontFamily.Serif
     return FontFamily(
         Font(paths.first, assetManager, weight = FontWeight.Normal),
