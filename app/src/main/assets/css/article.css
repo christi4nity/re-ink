@@ -49,10 +49,11 @@
 /* Override inline font-size/line-height from Substack email HTML.
    Targets common content elements — not headers, captions, or code
    which have their own intentional sizing. */
-p, span, div, li, td, th, a, em, strong, b, i, u, s,
+p, span, div, li, td, th, em, strong, b, i, u, s,
 .body, .markup, .post, .typography {
     font-size: inherit !important;
     line-height: inherit !important;
+    color: #000000 !important;
 }
 
 body {
