@@ -289,7 +289,7 @@ hr.article-footer-divider {
     border: none;
     border-top: 2px solid #000000;
     width: 25%;
-    margin: 2.5em auto 1.5em;
+    margin: 2.5em auto 2em;
 }
 
 .article-footer {
@@ -299,13 +299,15 @@ hr.article-footer-divider {
 
 .article-footer-button {
     display: inline-block;
-    padding: 0.75em 2em;
-    border: 2px solid #000000;
-    color: #000000;
+    padding: 0.6em 1.8em;
+    border: 1px solid #999999;
+    color: #777777 !important;
     text-decoration: none;
-    font-size: 0.9em;
-    font-weight: bold;
-    letter-spacing: 0.05em;
+    font-family: -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 0.8em;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 /* Hide Substack-specific elements */
