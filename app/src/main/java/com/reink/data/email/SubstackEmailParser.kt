@@ -66,6 +66,18 @@ class SubstackEmailParser @Inject constructor() {
         // Remove junk elements from body markup
         bodyMarkup.select(".subscription-widget-wrap, .subscribe-widget, .post-ufi, .footer-wrap, .share-dialog, .like-button-container, .button-wrapper").remove()
 
+        // Convert tweet table nests into clean blockquotes
+        bodyMarkup.select("table.twitter-embed").forEach { tweetTable ->
+            val clean = convertTweet(tweetTable)
+            tweetTable.replaceWith(Jsoup.parseBodyFragment(clean).body().child(0))
+        }
+
+        // Convert embedded Substack post cards into clean blockquotes
+        bodyMarkup.select(".embedded-post-wrap").forEach { embedWrap ->
+            val clean = convertEmbeddedPost(embedWrap)
+            embedWrap.replaceWith(Jsoup.parseBodyFragment(clean).body().child(0))
+        }
+
         // Collect images from captioned-image containers that are siblings
         // to body markup (Substack wraps them in tables outside the body div)
         val postDiv = doc.selectFirst("div.post.typography")
@@ -88,6 +100,77 @@ class SubstackEmailParser @Inject constructor() {
 
         // Insert images at the top if they were above the body markup in the email
         return images.joinToString("\n") + bodyHtml
+    }
+
+    /**
+     * Converts a Substack tweet embed (deeply nested tables) into a clean blockquote.
+     */
+    private fun convertTweet(table: org.jsoup.nodes.Element): String {
+        // Extract tweet data from the table structure
+        val nameEl = table.selectFirst("[class*=weight-semibold]")
+        val name = nameEl?.text()?.trim() ?: ""
+
+        val handleEl = table.selectFirst("[class*=color-secondary]")
+        val handle = handleEl?.text()?.trim()?.takeIf { it.startsWith("@") } ?: ""
+
+        val textEl = table.selectFirst("[class*=text-aFN1BV]")
+        val text = textEl?.text()?.trim() ?: ""
+
+        // Embedded image (not the avatar)
+        val imageEl = table.select("img").firstOrNull { img ->
+            val src = img.attr("src")
+            val width = img.attr("width").toIntOrNull() ?: 0
+            src.contains("media") || width > 100
+        }
+        val imageSrc = imageEl?.attr("src")?.takeIf { it.isNotBlank() }
+
+        val imageHtml = if (imageSrc != null) {
+            """<img class="tweet-image" src="$imageSrc">"""
+        } else ""
+
+        val attribution = listOf(name, handle).filter { it.isNotBlank() }.joinToString(" ")
+
+        return """
+            <blockquote class="tweet-card">
+                <p class="tweet-text">$text</p>
+                $imageHtml
+                <footer class="tweet-author">— $attribution</footer>
+            </blockquote>
+        """.trimIndent()
+    }
+
+    /**
+     * Converts a Substack embedded post card into a clean blockquote.
+     */
+    private fun convertEmbeddedPost(wrap: org.jsoup.nodes.Element): String {
+        val pubName = wrap.selectFirst(".embedded-post-publication-name")?.text()?.trim() ?: ""
+        val title = wrap.selectFirst(".embedded-post-title")?.text()?.trim() ?: ""
+        val url = wrap.selectFirst(".embedded-post-title")?.attr("href") ?: ""
+        val body = wrap.selectFirst(".embedded-post-body")?.text()?.trim() ?: ""
+        val meta = wrap.selectFirst(".embedded-post-meta")?.text()?.trim() ?: ""
+
+        val titleHtml = if (url.isNotBlank() && title.isNotBlank()) {
+            """<p class="embed-title"><a href="$url">$title</a></p>"""
+        } else if (title.isNotBlank()) {
+            """<p class="embed-title">$title</p>"""
+        } else ""
+
+        val bodyHtml = if (body.isNotBlank()) {
+            """<p class="embed-body">$body</p>"""
+        } else ""
+
+        val footerParts = listOf(pubName, meta).filter { it.isNotBlank() }
+        val footerHtml = if (footerParts.isNotEmpty()) {
+            """<footer class="embed-meta">${footerParts.joinToString(" · ")}</footer>"""
+        } else ""
+
+        return """
+            <blockquote class="embed-card">
+                $titleHtml
+                $bodyHtml
+                $footerHtml
+            </blockquote>
+        """.trimIndent()
     }
 
     /**

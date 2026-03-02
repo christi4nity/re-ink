@@ -276,9 +276,13 @@ fun ArticleWebView(
     onContentTapped: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val baseCss = remember {
+        context.assets.open("css/article.css").bufferedReader().readText()
+    }
     // Build HTML without the overlay height — that gets injected via JS
     val cssOverrides = buildCssOverrides(preferences)
-    val wrappedHtml = wrapHtml(contentHtml, cssOverrides)
+    val wrappedHtml = wrapHtml(contentHtml, baseCss, cssOverrides)
     val isPaginated = preferences.paginationMode == "paginated"
 
     val currentOnLinkTapped by rememberUpdatedState(onLinkTapped)
@@ -708,13 +712,13 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
     return "$rootVars\n$paginationCss"
 }
 
-private fun wrapHtml(content: String, cssOverrides: String): String = """
+private fun wrapHtml(content: String, baseCss: String, cssOverrides: String): String = """
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="css/article.css">
+        <style>$baseCss</style>
         <style>$cssOverrides</style>
     </head>
     <body>

@@ -46,14 +46,61 @@
     box-sizing: border-box;
 }
 
-/* Override inline font-size/line-height from Substack email HTML.
-   Targets common content elements — not headers, captions, or code
-   which have their own intentional sizing. */
+/* Override inline font-size/line-height/color from Substack email HTML.
+   Excludes tweet embeds which have their own intentional styling. */
 p, span, div, li, td, th, em, strong, b, i, u, s,
 .body, .markup, .post, .typography {
     font-size: inherit !important;
     line-height: inherit !important;
     color: #000000 !important;
+}
+
+/* Shared card style for tweets and embedded posts */
+.tweet-card,
+.embed-card {
+    border: 1px solid #cccccc;
+    border-radius: 10px;
+    margin: 1.2em 0;
+    padding: 1em 1.2em;
+    font-family: -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+/* Tweet cards */
+.tweet-card .tweet-text {
+    margin: 0 0 0.5em;
+}
+
+.tweet-card .tweet-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    margin: 0.5em 0;
+}
+
+.tweet-card .tweet-author {
+    font-size: 0.85em !important;
+    color: #777777 !important;
+    margin-top: 0.4em;
+}
+
+/* Embedded Substack post cards */
+.embed-card .embed-title {
+    margin: 0 0 0.3em;
+    font-weight: bold;
+}
+
+.embed-card .embed-title a {
+    text-decoration: none;
+}
+
+.embed-card .embed-body {
+    margin: 0 0 0.4em;
+    color: #555555 !important;
+}
+
+.embed-card .embed-meta {
+    font-size: 0.85em !important;
+    color: #777777 !important;
 }
 
 body {
@@ -71,6 +118,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
+    font-family: inherit !important;
     font-weight: bold;
     line-height: 1.3;
     margin-top: 1.5em;
@@ -86,11 +134,18 @@ p {
 }
 
 a {
-    color: #0D7377;
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
+    color: #333333 !important;
+    text-decoration: underline !important;
+    text-decoration-thickness: 1px;
     text-underline-offset: 2px;
-    font-weight: bold;
+}
+
+/* Links inside cards shouldn't be bold/underlined */
+.tweet-card a,
+.embed-card a {
+    color: inherit !important;
+    text-decoration: none !important;
+    font-weight: inherit;
 }
 
 img {
@@ -300,9 +355,9 @@ hr.article-footer-divider {
 .article-footer-button {
     display: inline-block;
     padding: 0.6em 1.8em;
-    border: 1px solid #999999;
+    border: none;
     color: #777777 !important;
-    text-decoration: none;
+    text-decoration: none !important;
     font-family: -apple-system, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-size: 0.8em;
     font-weight: 500;
