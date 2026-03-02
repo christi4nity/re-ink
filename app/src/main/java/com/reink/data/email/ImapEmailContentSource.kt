@@ -8,6 +8,9 @@ import jakarta.mail.Store
 import jakarta.mail.search.ComparisonTerm
 import jakarta.mail.search.ReceivedDateTerm
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.util.Date
 import java.util.Properties
@@ -77,6 +80,47 @@ class ImapEmailContentSource @Inject constructor(
                 try { store?.close() } catch (_: Exception) {}
             }
         }
+
+    override fun streamNewArticles(sinceTimestamp: Long): Flow<EmailArticle> = flow {
+        val credentials = credentialsStore.get()
+            ?: throw IllegalStateException("Email not configured")
+
+        var store: Store? = null
+        var folder: Folder? = null
+        try {
+            store = connectStore(credentials)
+            folder = store.getFolder(credentials.folderName).apply {
+                open(Folder.READ_ONLY)
+            }
+
+            val sinceDate = Date(sinceTimestamp)
+            val searchTerm = ReceivedDateTerm(ComparisonTerm.GE, sinceDate)
+            val messages = folder.search(searchTerm)
+            Log.d(TAG, "IMAP stream: ${messages.size} messages since $sinceDate")
+
+            // Prefetch envelopes (headers) — fast, no body download
+            val fetchProfile = FetchProfile().apply {
+                add(FetchProfile.Item.ENVELOPE)
+                add(FetchProfile.Item.CONTENT_INFO)
+            }
+            folder.fetch(messages, fetchProfile)
+
+            // Process newest first so fresh articles appear immediately
+            for (message in messages.reversed()) {
+                try {
+                    val result = parser.parse(message)
+                    if (result != null) {
+                        emit(result)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Stream: failed to parse '${message.subject}': ${e.message}")
+                }
+            }
+        } finally {
+            try { folder?.close(false) } catch (_: Exception) {}
+            try { store?.close() } catch (_: Exception) {}
+        }
+    }.flowOn(Dispatchers.IO)
 
     override suspend fun testConnection(): Result<String> =
         withContext(Dispatchers.IO) {

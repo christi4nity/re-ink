@@ -20,6 +20,9 @@ class FeedRepository @Inject constructor(
     fun observeAll(): Flow<List<Feed>> =
         feedDao.getAll().map { entities -> entities.map { it.toModel() } }
 
+    fun observeRssFeeds(): Flow<List<Feed>> =
+        feedDao.getRssFeeds().map { entities -> entities.map { it.toModel() } }
+
     suspend fun getById(id: Long): Feed? =
         feedDao.getById(id)?.toModel()
 

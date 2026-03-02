@@ -8,6 +8,9 @@ import com.reink.data.local.ArticleEntity
 import com.reink.data.local.FeedDao
 import com.reink.data.local.FeedEntity
 import com.reink.data.model.Article
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onEach
 import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,29 +27,38 @@ class EmailSyncRepository @Inject constructor(
             .takeIf { it > 0 }
             ?: (System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000) // Default: last 30 days
 
-        Log.d(TAG, "Email sync starting, sinceTimestamp=$sinceTimestamp")
-        return emailContentSource.fetchNewArticles(sinceTimestamp).map { emails ->
-            Log.d(TAG, "Fetched ${emails.size} email articles from IMAP")
-            var upgraded = 0
-            var inserted = 0
-            var skipped = 0
+        Log.d(TAG, "Email sync starting (streaming), sinceTimestamp=$sinceTimestamp")
+        var upgraded = 0
+        var inserted = 0
+        var skipped = 0
+        var error: Throwable? = null
 
-            for (email in emails) {
+        emailContentSource.streamNewArticles(sinceTimestamp)
+            .onEach { email ->
                 when (processEmail(email)) {
                     EmailAction.UPGRADED -> upgraded++
                     EmailAction.INSERTED -> inserted++
                     EmailAction.SKIPPED -> skipped++
                 }
             }
+            .catch { e ->
+                Log.e(TAG, "Email stream error: ${e.message}", e)
+                error = e
+            }
+            .collect()
 
-            Log.d(TAG, "Sync done: upgraded=$upgraded, inserted=$inserted, skipped=$skipped")
-            preferencesRepository.setLastEmailSync(System.currentTimeMillis())
-            SyncResult(upgraded = upgraded, inserted = inserted, skipped = skipped)
+        Log.d(TAG, "Sync done: upgraded=$upgraded, inserted=$inserted, skipped=$skipped")
+        preferencesRepository.setLastEmailSync(System.currentTimeMillis())
+
+        return if (error != null) {
+            Result.failure(error!!)
+        } else {
+            Result.success(SyncResult(upgraded = upgraded, inserted = inserted, skipped = skipped))
         }
     }
 
     private suspend fun processEmail(email: EmailArticle): EmailAction {
-        Log.d(TAG, "Processing email: '${email.subject}' from ${email.senderAddress}")
+        Log.d(TAG, "Processing email: '${email.subject}' from ${email.senderAddress} [${email.substackSubdomain}]")
         Log.d(TAG, "  viewOnlineUrl=${email.viewOnlineUrl}")
 
         // 1. Dedup: skip if we already processed this email
@@ -78,22 +90,20 @@ class EmailSyncRepository @Inject constructor(
             }
         }
 
-        // 3. Match sender or view-online URL to a feed
+        // 3. Match to a feed — subdomain from List-Id is the most reliable signal
         val matchedFeed = matchSenderToFeed(email)
         Log.d(TAG, "  matchedFeed=${matchedFeed?.title ?: "NONE"}")
 
         // 4. Insert: use matched feed, or create/reuse a feed for this sender
         val feed = matchedFeed ?: getOrCreateFeedForSender(email)
-        val feedId = feed.id
-        val feedLabel = feed.title
 
         val entity = ArticleEntity(
-            feedId = feedId,
+            feedId = feed.id,
             title = email.subject,
             author = email.senderName,
             url = viewUrl ?: "email://${email.messageId}",
             publishedAt = email.receivedAt,
-            summary = "",
+            summary = email.subtitle,
             contentHtml = email.contentHtml,
             contentStatus = Article.CONTENT_EMAIL,
             isRead = false,
@@ -101,7 +111,7 @@ class EmailSyncRepository @Inject constructor(
         )
         articleDao.insertAllNew(listOf(entity))
         if (matchedFeed != null) autoLearnSenderPattern(email)
-        Log.d(TAG, "  -> INSERTED under feed '$feedLabel'")
+        Log.d(TAG, "  -> INSERTED under feed '${feed.title}'")
         return EmailAction.INSERTED
     }
 
@@ -121,26 +131,24 @@ class EmailSyncRepository @Inject constructor(
 
     private suspend fun matchSenderToFeed(email: EmailArticle): FeedEntity? {
         val allFeeds = feedDao.getAllOnce()
-        Log.d(TAG, "  Matching against ${allFeeds.size} feeds:")
+        Log.d(TAG, "  Matching against ${allFeeds.size} feeds (email subdomain=${email.substackSubdomain}):")
         for (feed in allFeeds) {
             Log.d(TAG, "    - '${feed.title}' subdomain=${feed.substackSubdomain} siteUrl=${feed.siteUrl}")
         }
 
-        // Strategy 1: Match by emailSenderPattern
-        val feedsWithPatterns = feedDao.getFeedsWithEmailPatterns()
-        for (feed in feedsWithPatterns) {
-            val pattern = feed.emailSenderPattern ?: continue
-            if (email.senderAddress.contains(pattern, ignoreCase = true)) {
+        // Strategy 1: Match by List-Id subdomain — most reliable, straight from email headers
+        for (feed in allFeeds) {
+            val feedSubdomain = feed.substackSubdomain ?: continue
+            if (feedSubdomain.equals(email.substackSubdomain, ignoreCase = true)) {
                 return feed
             }
         }
 
-        // Strategy 2: Match by substackSubdomain against sender domain
-        val senderDomain = email.senderAddress.substringAfter("@", "")
-
-        for (feed in allFeeds) {
-            val subdomain = feed.substackSubdomain ?: continue
-            if (senderDomain.contains(subdomain, ignoreCase = true)) {
+        // Strategy 2: Match by emailSenderPattern
+        val feedsWithPatterns = feedDao.getFeedsWithEmailPatterns()
+        for (feed in feedsWithPatterns) {
+            val pattern = feed.emailSenderPattern ?: continue
+            if (email.senderAddress.contains(pattern, ignoreCase = true)) {
                 return feed
             }
         }
@@ -180,7 +188,8 @@ class EmailSyncRepository @Inject constructor(
         val feed = matchSenderToFeed(email) ?: return
         if (feed.emailSenderPattern != null) return
 
-        val pattern = email.senderAddress.substringAfter("@", "")
+        // Use sender local part (e.g. "cubicanalytics"), not the domain ("substack.com")
+        val pattern = email.senderAddress.substringBefore("@", "")
         if (pattern.isNotBlank()) {
             try {
                 feedDao.updateEmailSenderPattern(feed.id, pattern)
@@ -199,18 +208,17 @@ class EmailSyncRepository @Inject constructor(
     }
 
     private suspend fun getOrCreateFeedForSender(email: EmailArticle): FeedEntity {
-        val senderDomain = email.senderAddress.substringAfter("@", "")
+        val subdomain = email.substackSubdomain
         val allFeeds = feedDao.getAllOnce()
 
-        // Reuse existing feed with this sender pattern
-        val existing = allFeeds.find { feed ->
-            feed.emailSenderPattern != null &&
-                senderDomain.contains(feed.emailSenderPattern!!, ignoreCase = true)
+        // Reuse existing feed with matching subdomain
+        val bySubdomain = allFeeds.find { feed ->
+            feed.substackSubdomain?.equals(subdomain, ignoreCase = true) == true
         }
-        if (existing != null) return existing
+        if (bySubdomain != null) return bySubdomain
 
-        // Create new feed from email sender
-        val title = email.senderName.ifBlank { senderDomain }
+        // Create new feed — use From name as title, subdomain for matching
+        val title = email.senderName.ifBlank { subdomain }
         val siteUrl = email.viewOnlineUrl?.let { url ->
             try {
                 val uri = URI(url)
@@ -218,15 +226,19 @@ class EmailSyncRepository @Inject constructor(
             } catch (_: Exception) { "" }
         } ?: ""
 
-        Log.d(TAG, "  Creating new feed '$title' for sender $senderDomain")
+        // Use sender local part as pattern (e.g. "cubicanalytics"), not the domain ("substack.com")
+        val senderLocal = email.senderAddress.substringBefore("@", "")
+
+        Log.d(TAG, "  Creating new feed '$title' for subdomain=$subdomain")
         val id = feedDao.insert(
             FeedEntity(
                 title = title,
-                url = "email://$senderDomain",
+                url = "email://$subdomain",
                 siteUrl = siteUrl,
+                substackSubdomain = subdomain,
                 requiresAuth = false,
                 addedAt = System.currentTimeMillis(),
-                emailSenderPattern = senderDomain,
+                emailSenderPattern = senderLocal.ifBlank { null },
             ),
         )
         return feedDao.getById(id)!!

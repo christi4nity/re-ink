@@ -137,7 +137,9 @@ fun ReaderScreen(
                     contentHtml = state.contentHtml,
                     preferences = state.preferences,
                     verticalInsetPx = overlayBarHeightPx,
-                    onLinkTapped = { url -> pendingLinkUrl = url },
+                    onLinkTapped = { url ->
+                        if (url == "reink://back") onBack() else pendingLinkUrl = url
+                    },
                     currentPage = currentPage,
                     onPageCountChanged = { totalPages = it },
                     onPageTurn = { delta ->

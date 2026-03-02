@@ -11,6 +11,9 @@ interface FeedDao {
     @Query("SELECT * FROM feeds ORDER BY title ASC")
     fun getAll(): Flow<List<FeedEntity>>
 
+    @Query("SELECT * FROM feeds WHERE url NOT LIKE 'email://%' ORDER BY title ASC")
+    fun getRssFeeds(): Flow<List<FeedEntity>>
+
     @Query("SELECT * FROM feeds WHERE id = :id")
     suspend fun getById(id: Long): FeedEntity?
 

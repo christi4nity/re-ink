@@ -31,6 +31,7 @@ data class ArticleSection(
 data class FeedUiState(
     val sections: List<ArticleSection> = emptyList(),
     val feeds: List<Feed> = emptyList(),
+    val feedTitles: Map<Long, String> = emptyMap(),
     val selectedFeedId: Long? = null,
     val unreadOnly: Boolean = false,
     val isSyncing: Boolean = false,
@@ -47,9 +48,13 @@ class FeedViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val selectedFeedId = MutableStateFlow<Long?>(null)
-    private val unreadOnly = MutableStateFlow(false)
+    private val unreadOnly = MutableStateFlow(true)
     private val isSyncing = MutableStateFlow(false)
     private val error = MutableStateFlow<String?>(null)
+
+    init {
+        sync()
+    }
 
     private data class FilterState(val feedId: Long?, val unreadOnly: Boolean)
 
@@ -71,6 +76,7 @@ class FeedViewModel @Inject constructor(
         FeedUiState(
             sections = groupByDate(articles),
             feeds = feeds,
+            feedTitles = feeds.associate { it.id to it.title },
             selectedFeedId = filter.feedId,
             unreadOnly = filter.unreadOnly,
             isSyncing = syncing,
@@ -115,6 +121,12 @@ class FeedViewModel @Inject constructor(
                 set(java.util.Calendar.MILLISECOND, 0)
             }.timeInMillis
             articleRepository.markAllReadBefore(startOfToday)
+        }
+    }
+
+    fun deleteArticle(id: Long) {
+        viewModelScope.launch {
+            articleRepository.delete(id)
         }
     }
 

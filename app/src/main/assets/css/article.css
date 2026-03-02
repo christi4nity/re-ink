@@ -222,6 +222,13 @@ th {
     margin: 0;
 }
 
+.article-header-subtitle {
+    font-size: 1.05em;
+    color: #555555;
+    margin-top: 0.4em;
+    line-height: 1.35;
+}
+
 .article-header-author {
     font-size: 0.85em;
     color: #555555;
@@ -233,6 +240,29 @@ hr.article-header-divider {
     border-top: 2px solid #000000;
     width: 25%;
     margin: 1.5em auto;
+}
+
+hr.article-footer-divider {
+    border: none;
+    border-top: 2px solid #000000;
+    width: 25%;
+    margin: 2.5em auto 1.5em;
+}
+
+.article-footer {
+    text-align: center;
+    padding-bottom: 3em;
+}
+
+.article-footer-button {
+    display: inline-block;
+    padding: 0.75em 2em;
+    border: 2px solid #000000;
+    color: #000000;
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: bold;
+    letter-spacing: 0.05em;
 }
 
 /* Hide Substack-specific elements */

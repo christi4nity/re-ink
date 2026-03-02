@@ -52,6 +52,13 @@ class ReaderViewModel @Inject constructor(
     /** Cached title card HTML, reused when extraction completes and we swap to local rendering. */
     private var titleCardHtml: String = ""
 
+    private val footerHtml = """
+        <hr class="article-footer-divider">
+        <div class="article-footer">
+            <a class="article-footer-button" href="reink://back">Back to Feed</a>
+        </div>
+    """.trimIndent()
+
     val uiState: StateFlow<ReaderUiState> = combine(
         content,
         preferencesRepository.observeReadingPreferences(),
@@ -89,12 +96,13 @@ class ReaderViewModel @Inject constructor(
                         titleCardHtml = buildTitleCard(
                             source = feed?.title ?: "",
                             title = article.title,
+                            subtitle = article.summary,
                             author = article.author,
                             imageUrl = feed?.imageUrl,
                         )
 
                         // Always show whatever content we have immediately
-                        content.value = article.title to (titleCardHtml + article.contentHtml)
+                        content.value = article.title to (titleCardHtml + article.contentHtml + footerHtml)
 
                         when (article.contentStatus) {
                             Article.CONTENT_TRUNCATED,
@@ -111,10 +119,11 @@ class ReaderViewModel @Inject constructor(
                         titleCardHtml = buildTitleCard(
                             source = "",
                             title = item.title,
+                            subtitle = "",
                             author = "",
                             imageUrl = null,
                         )
-                        content.value = item.title to (titleCardHtml + item.contentHtml)
+                        content.value = item.title to (titleCardHtml + item.contentHtml + footerHtml)
                         readLaterRepository.markRead(itemId)
                     }
                 }
@@ -142,7 +151,7 @@ class ReaderViewModel @Inject constructor(
                     html,
                     Article.CONTENT_EXTRACTED,
                 )
-                content.value = content.value.first to (titleCardHtml + html)
+                content.value = content.value.first to (titleCardHtml + html + footerHtml)
                 articleUrl.value = null
                 extractionFailed.value = false
             } else {
@@ -171,6 +180,7 @@ class ReaderViewModel @Inject constructor(
     private fun buildTitleCard(
         source: String,
         title: String,
+        subtitle: String,
         author: String,
         imageUrl: String?,
     ): String {
@@ -180,7 +190,10 @@ class ReaderViewModel @Inject constructor(
         val sourceHtml = if (source.isNotBlank()) {
             """<div class="article-header-source">${escapeHtml(source)}</div>"""
         } else ""
-        val authorHtml = if (author.isNotBlank()) {
+        val subtitleHtml = if (subtitle.isNotBlank()) {
+            """<div class="article-header-subtitle">${escapeHtml(subtitle)}</div>"""
+        } else ""
+        val authorHtml = if (author.isNotBlank() && !author.equals(source, ignoreCase = true)) {
             """<div class="article-header-author">${escapeHtml(author)}</div>"""
         } else ""
         return """
@@ -188,6 +201,7 @@ class ReaderViewModel @Inject constructor(
                 $imageHtml
                 $sourceHtml
                 <h1 class="article-header-title">${escapeHtml(title)}</h1>
+                $subtitleHtml
                 $authorHtml
             </div>
             <hr class="article-header-divider">

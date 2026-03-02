@@ -276,7 +276,8 @@ fun ArticleWebView(
     onContentTapped: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val cssOverrides = buildCssOverrides(preferences, verticalInsetPx)
+    // Build HTML without the overlay height — that gets injected via JS
+    val cssOverrides = buildCssOverrides(preferences)
     val wrappedHtml = wrapHtml(contentHtml, cssOverrides)
     val isPaginated = preferences.paginationMode == "paginated"
 
@@ -286,8 +287,10 @@ fun ArticleWebView(
     val currentIsPaginated by rememberUpdatedState(isPaginated)
     val currentOnPageTurn by rememberUpdatedState(onPageTurn)
     val currentOnContentTapped by rememberUpdatedState(onContentTapped)
+    val currentVerticalInsetPx by rememberUpdatedState(verticalInsetPx)
 
     var lastLoadedHtml by remember { mutableStateOf("") }
+    var lastInsetPx by remember { mutableStateOf(verticalInsetPx) }
 
     AndroidView(
         factory = { context ->
@@ -412,6 +415,14 @@ fun ArticleWebView(
                     null,
                 )
                 lastLoadedHtml = wrappedHtml
+                lastInsetPx = currentVerticalInsetPx
+            } else if (currentVerticalInsetPx != lastInsetPx) {
+                // Overlay toggled — update CSS variable via JS without reloading
+                lastInsetPx = currentVerticalInsetPx
+                webView.evaluateJavascript(
+                    "(function(){document.documentElement.style.setProperty('--reader-overlay-height','${currentVerticalInsetPx}px');})();",
+                    null,
+                )
             } else if (isPaginated) {
                 webView.evaluateJavascript(
                     "(function(){var c=document.getElementById('col-wrapper')||document.body;if(c)c.scrollLeft=${currentPage}*document.documentElement.clientWidth;})();",
@@ -467,6 +478,13 @@ private const val PAGINATION_SETUP_JS = """
 
     b.style.margin = '0';
     b.style.setProperty('background-color', '#ffffff', 'important');
+    b.style.position = 'fixed';
+    b.style.top = '0';
+    b.style.right = '0';
+    b.style.bottom = '0';
+    b.style.left = '0';
+    b.style.width = 'auto';
+    b.style.boxSizing = 'border-box';
     b.style.paddingRight = margin + 'px';
     b.style.paddingLeft = margin + 'px';
     b.style.overflow = 'hidden';
@@ -488,8 +506,6 @@ private const val PAGINATION_SETUP_JS = """
         vw = h.clientWidth;
         colWidth = vw - 2 * margin;
         colGap = 2 * margin;
-        b.style.height = vh + 'px';
-        b.style.minHeight = vh + 'px';
         c.style.columnWidth = colWidth + 'px';
         c.style.webkitColumnWidth = colWidth + 'px';
         c.style.columnGap = colGap + 'px';
@@ -637,7 +653,7 @@ private class PageBridge(
     }
 }
 
-private fun buildCssOverrides(prefs: ReadingPreferences, verticalInsetPx: Int): String {
+private fun buildCssOverrides(prefs: ReadingPreferences): String {
     val rootVars = """
         :root {
             --font-family: '${prefs.fontFamily}', serif;
@@ -645,7 +661,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences, verticalInsetPx: Int): 
             --line-height: ${prefs.lineHeight};
             --margin-horizontal: ${prefs.marginHorizontal}px;
             --text-align: ${prefs.textAlign};
-            --reader-overlay-height: ${verticalInsetPx}px;
+            --reader-overlay-height: 56px;
         }
     """.trimIndent()
 

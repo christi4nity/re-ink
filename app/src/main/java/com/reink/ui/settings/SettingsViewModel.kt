@@ -71,7 +71,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        feedRepository.observeAll(),
+        feedRepository.observeRssFeeds(),
         preferencesRepository.observeReadingPreferences(),
         showAddFeedDialog,
         emailState,

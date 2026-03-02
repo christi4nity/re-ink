@@ -16,11 +16,27 @@ interface ArticleDao {
     fun getAll(): Flow<List<ArticleEntity>>
 
     @Query(
+        """SELECT a.* FROM articles a
+           INNER JOIN feeds f ON a.feedId = f.id
+           WHERE f.url NOT LIKE 'email://%'
+           ORDER BY a.publishedAt DESC"""
+    )
+    fun getRssFeedArticles(): Flow<List<ArticleEntity>>
+
+    @Query(
         """SELECT * FROM articles
            WHERE feedId = :feedId
            ORDER BY publishedAt DESC"""
     )
     fun getByFeed(feedId: Long): Flow<List<ArticleEntity>>
+
+    @Query(
+        """SELECT a.* FROM articles a
+           INNER JOIN feeds f ON a.feedId = f.id
+           WHERE f.url NOT LIKE 'email://%' AND a.isRead = 0
+           ORDER BY a.publishedAt DESC"""
+    )
+    fun getRssFeedUnread(): Flow<List<ArticleEntity>>
 
     @Query(
         """SELECT * FROM articles
@@ -50,6 +66,9 @@ interface ArticleDao {
 
     @Query("UPDATE articles SET isRead = 1 WHERE publishedAt < :cutoff")
     suspend fun markAllReadBefore(cutoff: Long)
+
+    @Query("DELETE FROM articles WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Query("DELETE FROM articles WHERE feedId = :feedId")
     suspend fun deleteByFeed(feedId: Long)

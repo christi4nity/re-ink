@@ -37,6 +37,9 @@ class ArticleRepository @Inject constructor(
     suspend fun markRead(id: Long) =
         articleDao.markRead(id)
 
+    suspend fun delete(id: Long) =
+        articleDao.deleteById(id)
+
     suspend fun markAllReadBefore(cutoff: Long) =
         articleDao.markAllReadBefore(cutoff)
 
@@ -100,7 +103,7 @@ class ArticleRepository @Inject constructor(
     }
 
     suspend fun syncAllFeeds(): Result<Int> {
-        val allFeeds = feedDao.getAllOnce()
+        val allFeeds = feedDao.getAllOnce().filter { !it.url.startsWith("email://") }
         var totalNew = 0
         var lastError: Throwable? = null
 

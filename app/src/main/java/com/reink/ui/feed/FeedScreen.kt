@@ -33,8 +33,6 @@ fun FeedScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val feedTitles = state.feeds.associate { it.id to it.title }
-
     Scaffold(
         topBar = {
             Row(
@@ -126,8 +124,9 @@ fun FeedScreen(
                             ) { article ->
                                 ArticleListItem(
                                     article = article,
-                                    feedTitle = feedTitles[article.feedId] ?: "",
+                                    feedTitle = state.feedTitles[article.feedId] ?: "",
                                     onClick = { onArticleClick(article.id) },
+                                    onDelete = { viewModel.deleteArticle(article.id) },
                                 )
                             }
                         }
