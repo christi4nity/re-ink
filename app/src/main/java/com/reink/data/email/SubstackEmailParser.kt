@@ -4,7 +4,7 @@ import jakarta.mail.Message
 import jakarta.mail.Multipart
 import jakarta.mail.Part
 import jakarta.mail.internet.InternetAddress
-import net.dankito.readability4j.Readability4J
+import org.jsoup.Jsoup
 import java.net.URI
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,10 +29,16 @@ class SubstackEmailParser @Inject constructor() {
         val viewOnlineUrl = extractListPostUrl(message)
             ?: extractViewOnlineUrl(htmlBody)
 
-        val subtitle = extractSubtitle(htmlBody)
+        val doc = Jsoup.parse(htmlBody)
+        val subtitle = doc.selectFirst("h3.subtitle")?.text()?.trim() ?: ""
+        val headerImageUrl = doc.selectFirst("img.header-image")?.attr("src")
+            ?.takeIf { it.isNotBlank() }
 
-        val articleHtml = extractArticleContent(htmlBody, viewOnlineUrl)
-            ?: return null
+        val articleHtml = extractArticleContent(doc) ?: return null
+
+        val headerImageHtml = if (headerImageUrl != null) {
+            """<img src="$headerImageUrl" style="width:100%;height:auto;margin-bottom:1em;">"""
+        } else ""
 
         return EmailArticle(
             subject = message.subject ?: "",
@@ -42,10 +48,46 @@ class SubstackEmailParser @Inject constructor() {
             substackSubdomain = subdomain,
             receivedAt = (message.receivedDate ?: message.sentDate)?.time
                 ?: System.currentTimeMillis(),
-            contentHtml = articleHtml,
+            contentHtml = headerImageHtml + articleHtml,
             viewOnlineUrl = viewOnlineUrl,
             messageId = messageId,
         )
+    }
+
+    /**
+     * Extracts article content directly from the Substack email DOM.
+     * Uses `div.body.markup` for the article text, then collects any
+     * sibling captioned-image containers that Substack places outside
+     * the body markup in table wrappers.
+     */
+    private fun extractArticleContent(doc: org.jsoup.nodes.Document): String? {
+        val bodyMarkup = doc.selectFirst("div.body.markup") ?: return null
+
+        // Remove junk elements from body markup
+        bodyMarkup.select(".subscription-widget-wrap, .subscribe-widget, .post-ufi, .footer-wrap, .share-dialog, .like-button-container, .button-wrapper").remove()
+
+        // Collect images from captioned-image containers that are siblings
+        // to body markup (Substack wraps them in tables outside the body div)
+        val postDiv = doc.selectFirst("div.post.typography")
+        val images = postDiv?.select(".captioned-image-container, .captioned-image-container-static")
+            ?.mapNotNull { container ->
+                val img = container.selectFirst("img:not(.icon):not(.email-button-text)") ?: return@mapNotNull null
+                val src = img.attr("src")
+                if (src.isBlank() || "w_36" in src) return@mapNotNull null
+                val caption = container.selectFirst("figcaption")?.text()?.trim()
+                if (caption.isNullOrBlank()) {
+                    """<figure><img src="$src"></figure>"""
+                } else {
+                    """<figure><img src="$src"><figcaption>$caption</figcaption></figure>"""
+                }
+            } ?: emptyList()
+
+        // Build final content: images that were before body markup go first
+        val bodyHtml = bodyMarkup.html()
+        if (bodyHtml.length < 100 && images.isEmpty()) return null
+
+        // Insert images at the top if they were above the body markup in the email
+        return images.joinToString("\n") + bodyHtml
     }
 
     /**
@@ -105,46 +147,5 @@ class SubstackEmailParser @Inject constructor() {
         } catch (_: Exception) {
             url
         }
-    }
-
-    /**
-     * Extracts the post subtitle from `<h3 class="subtitle ...">text</h3>`.
-     * Substack includes this in every newsletter email.
-     */
-    private fun extractSubtitle(html: String): String {
-        val match = Regex("""<h3[^>]*class="subtitle[^"]*"[^>]*>(.*?)</h3>""", RegexOption.DOT_MATCHES_ALL)
-            .find(html) ?: return ""
-        return match.groupValues[1].replace(Regex("<[^>]+>"), "").trim()
-    }
-
-    private fun extractArticleContent(emailHtml: String, viewOnlineUrl: String?): String? {
-        // Strip the Substack email header (title, subtitle, author/date metadata)
-        // before Readability processing so we don't duplicate our own title card
-        val stripped = stripEmailHeader(emailHtml)
-        val sourceUrl = viewOnlineUrl ?: "https://substack.com"
-        return try {
-            val readability = Readability4J(sourceUrl, stripped)
-            val article = readability.parse()
-            val content = article.contentWithUtf8Encoding
-            if (content.isNullOrBlank() || content.length < 100) null else content
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    /**
-     * Removes the Substack email header elements: the h1 title, h3 subtitle,
-     * and the post-meta table (author name + date) so they don't appear in the
-     * extracted article body.
-     */
-    private fun stripEmailHeader(html: String): String {
-        var result = html
-        // Remove <h1 ...>title</h1> (the post title link)
-        result = result.replace(Regex("""<h1[^>]*>.*?</h1>""", RegexOption.DOT_MATCHES_ALL), "")
-        // Remove <h3 class="subtitle ...">...</h3>
-        result = result.replace(Regex("""<h3[^>]*class="subtitle[^"]*"[^>]*>.*?</h3>""", RegexOption.DOT_MATCHES_ALL), "")
-        // Remove <table class="post-meta" ...>...</table> (author + date row)
-        result = result.replace(Regex("""<table[^>]*class="post-meta"[^>]*>.*?</table>""", RegexOption.DOT_MATCHES_ALL), "")
-        return result
     }
 }

@@ -88,9 +88,10 @@ img {
     max-width: 100% !important;
     width: auto;
     height: auto !important;
-    margin: 1em auto;
-    border: 0;
-    outline: 0;
+    margin: 0.75em auto;
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
 }
 
 /* Override inline dimensions from newsletter HTML */
@@ -106,24 +107,56 @@ img[src=""], img:not([src]) {
 
 /* Remove link borders around images */
 a img {
-    border: 0;
-    outline: 0;
+    border: 0 !important;
+    outline: 0 !important;
+}
+
+/* Neutralize Substack image wrapper tables */
+.image-wrapper,
+table.image-wrapper {
+    border: 0 !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.image-wrapper td {
+    border: 0 !important;
+    padding: 0 !important;
+}
+
+/* Collapse Substack image containers — they add excessive margins */
+.captioned-image-container,
+.captioned-image-container-static {
+    margin: 0.75em 0 !important;
+    padding: 0 !important;
+}
+
+/* Image links should not add spacing or borders */
+a.image-link {
+    display: block;
+    border: 0 !important;
+    outline: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 figure {
-    margin: 1em 0;
+    margin: 0.75em 0;
     padding: 0;
     overflow: hidden;
 }
 
 figure img {
     width: 100%;
+    margin: 0;
 }
 
 figcaption {
     font-size: 0.85em;
     color: #666666;
-    margin-top: 0.5em;
+    margin-top: 0.4em;
 }
 
 picture {
@@ -194,7 +227,7 @@ th {
 /* Article title card */
 .article-header {
     text-align: center;
-    padding: 0 0 0.5em;
+    padding: 1.5em 0 0.5em;
 }
 
 .article-header-logo {
