@@ -34,12 +34,12 @@ class PreferencesRepository @Inject constructor(
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
         dataStore.data.map { prefs ->
             ReadingPreferences(
-                fontFamily = prefs[KEY_FONT_FAMILY] ?: "Literata",
-                fontSize = prefs[KEY_FONT_SIZE] ?: 18,
-                lineHeight = prefs[KEY_LINE_HEIGHT] ?: 1.6f,
-                marginHorizontal = prefs[KEY_MARGIN_HORIZONTAL] ?: 16,
-                textAlign = prefs[KEY_TEXT_ALIGN] ?: "left",
-                paginationMode = prefs[KEY_PAGINATION_MODE] ?: "scroll",
+                fontFamily = prefs[KEY_FONT_FAMILY] ?: ReadingPreferences().fontFamily,
+                fontSize = prefs[KEY_FONT_SIZE] ?: ReadingPreferences().fontSize,
+                lineHeight = prefs[KEY_LINE_HEIGHT] ?: ReadingPreferences().lineHeight,
+                marginHorizontal = prefs[KEY_MARGIN_HORIZONTAL] ?: ReadingPreferences().marginHorizontal,
+                textAlign = prefs[KEY_TEXT_ALIGN] ?: ReadingPreferences().textAlign,
+                paginationMode = prefs[KEY_PAGINATION_MODE] ?: ReadingPreferences().paginationMode,
             )
         }
 

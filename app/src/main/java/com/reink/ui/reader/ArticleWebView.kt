@@ -292,6 +292,42 @@ fun ArticleWebView(
     var lastLoadedHtml by remember { mutableStateOf("") }
     var lastInsetPx by remember { mutableStateOf(verticalInsetPx) }
 
+    // Hold a reference to the WebView for imperative updates
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    // Push HTML changes to the WebView imperatively — AndroidView's update
+    // block doesn't rerun when only rememberUpdatedState values change
+    androidx.compose.runtime.LaunchedEffect(wrappedHtml) {
+        val wv = webViewRef ?: return@LaunchedEffect
+        if (wrappedHtml != lastLoadedHtml) {
+            wv.loadDataWithBaseURL("file:///android_asset/", wrappedHtml, "text/html", "UTF-8", null)
+            lastLoadedHtml = wrappedHtml
+        }
+    }
+
+    // Push page changes
+    androidx.compose.runtime.LaunchedEffect(currentPage, isPaginated) {
+        val wv = webViewRef ?: return@LaunchedEffect
+        if (isPaginated && wrappedHtml == lastLoadedHtml) {
+            wv.evaluateJavascript(
+                "(function(){var c=document.getElementById('col-wrapper')||document.body;if(c)c.scrollLeft=${currentPage}*document.documentElement.clientWidth;})();",
+                null,
+            )
+        }
+    }
+
+    // Push overlay height changes via JS (no reload needed)
+    androidx.compose.runtime.LaunchedEffect(verticalInsetPx) {
+        val wv = webViewRef ?: return@LaunchedEffect
+        if (verticalInsetPx != lastInsetPx) {
+            lastInsetPx = verticalInsetPx
+            wv.evaluateJavascript(
+                "(function(){var h=document.documentElement;if(h)h.style.setProperty('--reader-overlay-height','${verticalInsetPx}px');})();",
+                null,
+            )
+        }
+    }
+
     AndroidView(
         factory = { context ->
             @SuppressLint("ClickableViewAccessibility")
@@ -403,32 +439,10 @@ fun ArticleWebView(
                 )
                 lastLoadedHtml = wrappedHtml
             }
-            createWebView()
+            createWebView().also { webViewRef = it }
         },
         update = { webView ->
-            if (wrappedHtml != lastLoadedHtml) {
-                webView.loadDataWithBaseURL(
-                    "file:///android_asset/",
-                    wrappedHtml,
-                    "text/html",
-                    "UTF-8",
-                    null,
-                )
-                lastLoadedHtml = wrappedHtml
-                lastInsetPx = currentVerticalInsetPx
-            } else if (currentVerticalInsetPx != lastInsetPx) {
-                // Overlay toggled — update CSS variable via JS without reloading
-                lastInsetPx = currentVerticalInsetPx
-                webView.evaluateJavascript(
-                    "(function(){document.documentElement.style.setProperty('--reader-overlay-height','${currentVerticalInsetPx}px');})();",
-                    null,
-                )
-            } else if (isPaginated) {
-                webView.evaluateJavascript(
-                    "(function(){var c=document.getElementById('col-wrapper')||document.body;if(c)c.scrollLeft=${currentPage}*document.documentElement.clientWidth;})();",
-                    null,
-                )
-            }
+            webViewRef = webView
         },
         modifier = modifier,
     )

@@ -46,10 +46,19 @@
     box-sizing: border-box;
 }
 
+/* Override inline font-size/line-height from Substack email HTML.
+   Targets common content elements — not headers, captions, or code
+   which have their own intentional sizing. */
+p, span, div, li, td, th, a, em, strong, b, i, u, s,
+.body, .markup, .post, .typography {
+    font-size: inherit !important;
+    line-height: inherit !important;
+}
+
 body {
     font-family: var(--font-family);
-    font-size: var(--font-size);
-    line-height: var(--line-height);
+    font-size: var(--font-size) !important;
+    line-height: var(--line-height) !important;
     text-align: var(--text-align);
     margin: 0;
     padding: 12px var(--margin-horizontal);
