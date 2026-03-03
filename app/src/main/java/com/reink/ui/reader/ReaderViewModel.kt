@@ -3,7 +3,6 @@ package com.reink.ui.reader
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.reink.data.model.Article
 import com.reink.data.model.ReadingPreferences
 import com.reink.data.repository.ArticleRepository
 import com.reink.data.repository.FeedRepository
@@ -24,10 +23,6 @@ data class ReaderUiState(
     val preferences: ReadingPreferences = ReadingPreferences(),
     val isLoading: Boolean = true,
     val savedForLater: Boolean = false,
-    val articleUrl: String? = null,
-    val substackSid: String = "",
-    val isExtracting: Boolean = false,
-    val extractionFailed: Boolean = false,
 )
 
 @HiltViewModel
@@ -44,13 +39,6 @@ class ReaderViewModel @Inject constructor(
 
     private val content = MutableStateFlow<Pair<String, String>>("" to "")
     private val savedForLater = MutableStateFlow(false)
-    private val articleUrl = MutableStateFlow<String?>(null)
-    private val substackSid = MutableStateFlow("")
-    private val isExtracting = MutableStateFlow(false)
-    private val extractionFailed = MutableStateFlow(false)
-
-    /** Cached title card HTML, reused when extraction completes and we swap to local rendering. */
-    private var titleCardHtml: String = ""
 
     private val footerHtml = """
         <hr class="article-footer-divider">
@@ -63,18 +51,13 @@ class ReaderViewModel @Inject constructor(
         content,
         preferencesRepository.observeReadingPreferences(),
         savedForLater,
-        combine(articleUrl, substackSid, isExtracting, extractionFailed, ::toExtractState),
-    ) { (title, html), prefs, saved, extractState ->
+    ) { (title, html), prefs, saved ->
         ReaderUiState(
             title = title,
             contentHtml = html,
             preferences = prefs,
             isLoading = html.isEmpty(),
             savedForLater = saved,
-            articleUrl = extractState.url,
-            substackSid = extractState.sid,
-            isExtracting = extractState.extracting,
-            extractionFailed = extractState.failed,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -93,87 +76,32 @@ class ReaderViewModel @Inject constructor(
                     val article = articleRepository.getById(itemId)
                     if (article != null) {
                         val feed = feedRepository.getById(article.feedId)
-                        titleCardHtml = buildTitleCard(
+                        val titleCard = buildTitleCard(
                             source = feed?.title ?: "",
                             title = article.title,
                             subtitle = article.summary,
                             author = article.author,
                             imageUrl = feed?.imageUrl,
                         )
-
-                        // Always show whatever content we have immediately
-                        content.value = article.title to (titleCardHtml + article.contentHtml + footerHtml)
-
-                        when (article.contentStatus) {
-                            Article.CONTENT_TRUNCATED,
-                            Article.CONTENT_FAILED -> {
-                                startWebViewExtraction(article.url, feed?.substackSubdomain)
-                            }
-                        }
+                        content.value = article.title to (titleCard + article.contentHtml + footerHtml)
                         articleRepository.markRead(itemId)
                     }
                 }
                 "readlater" -> {
                     val item = readLaterRepository.getById(itemId)
                     if (item != null) {
-                        titleCardHtml = buildTitleCard(
+                        val titleCard = buildTitleCard(
                             source = "",
                             title = item.title,
                             subtitle = "",
                             author = "",
                             imageUrl = null,
                         )
-                        content.value = item.title to (titleCardHtml + item.contentHtml + footerHtml)
+                        content.value = item.title to (titleCard + item.contentHtml + footerHtml)
                         readLaterRepository.markRead(itemId)
                     }
                 }
             }
-        }
-    }
-
-    private suspend fun startWebViewExtraction(url: String, @Suppress("UNUSED_PARAMETER") substackSubdomain: String?) {
-        val sid = preferencesRepository.getSubstackSid()
-        substackSid.value = sid
-        articleUrl.value = url
-        isExtracting.value = true
-        extractionFailed.value = false
-    }
-
-    /**
-     * Called by SubstackWebView when extraction completes.
-     */
-    fun onContentExtracted(html: String?, success: Boolean) {
-        viewModelScope.launch {
-            isExtracting.value = false
-            if (success && !html.isNullOrBlank()) {
-                articleRepository.updateExtractedContent(
-                    itemId,
-                    html,
-                    Article.CONTENT_EXTRACTED,
-                )
-                content.value = content.value.first to (titleCardHtml + html + footerHtml)
-                articleUrl.value = null
-                extractionFailed.value = false
-            } else {
-                articleRepository.updateExtractedContent(
-                    itemId,
-                    "",
-                    Article.CONTENT_FAILED,
-                )
-                extractionFailed.value = true
-                articleUrl.value = null
-            }
-        }
-    }
-
-    /**
-     * Retry extraction for a failed article.
-     */
-    fun retryExtraction() {
-        viewModelScope.launch {
-            val article = articleRepository.getById(itemId) ?: return@launch
-            val feed = feedRepository.getById(article.feedId)
-            startWebViewExtraction(article.url, feed?.substackSubdomain)
         }
     }
 
@@ -232,17 +160,3 @@ class ReaderViewModel @Inject constructor(
         savedForLater.value = false
     }
 }
-
-private data class ExtractState(
-    val url: String?,
-    val sid: String,
-    val extracting: Boolean,
-    val failed: Boolean,
-)
-
-private fun toExtractState(
-    url: String?,
-    sid: String,
-    extracting: Boolean,
-    failed: Boolean,
-) = ExtractState(url, sid, extracting, failed)

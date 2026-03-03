@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -118,21 +117,6 @@ fun ReaderScreen(
             if (state.isLoading) {
                 LoadingIndicator(modifier = Modifier.fillMaxSize())
             } else {
-                // Full-size extraction WebView behind the reader —
-                // must be full-size so Android doesn't throttle JS execution
-                val extractionUrl = state.articleUrl
-                if (extractionUrl != null) {
-                    SubstackWebView(
-                        articleUrl = extractionUrl,
-                        sid = state.substackSid,
-                        onExtractionResult = { html, success ->
-                            viewModel.onContentExtracted(html, success)
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-
-                // Reader WebView on top (covers extraction WebView)
                 ArticleWebView(
                     contentHtml = state.contentHtml,
                     preferences = state.preferences,
@@ -149,14 +133,6 @@ fun ReaderScreen(
                     onContentTapped = { showOverlay = !showOverlay },
                     modifier = Modifier.fillMaxSize(),
                 )
-
-                // Retry banner for failed extractions
-                if (state.extractionFailed) {
-                    ExtractionFailedBanner(
-                        onRetry = { viewModel.retryExtraction() },
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                    )
-                }
             }
 
             // Overlay — top bar
@@ -307,42 +283,6 @@ private fun ReadingProgressBar(
                 )
             },
     )
-}
-
-@Composable
-private fun ExtractionFailedBanner(
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .drawBehind {
-                drawLine(
-                    color = borderColor,
-                    start = Offset(0f, 0f),
-                    end = Offset(size.width, 0f),
-                    strokeWidth = 2f,
-                )
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = "Full article unavailable",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        OutlinedButton(
-            onClick = onRetry,
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-        ) {
-            Text("Retry", style = MaterialTheme.typography.labelMedium)
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
