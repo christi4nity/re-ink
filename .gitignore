@@ -4,3 +4,21 @@ app/build/
 .idea/
 *.iml
 local.properties
+
+# Signing
+*.jks
+*.keystore
+
+# Build outputs
+*.apk
+*.aab
+
+# OS
+.DS_Store
+
+# Tooling artifacts
+.playwright-mcp/
+*.log
+
+# Internal docs (plans, handoffs)
+docs/
