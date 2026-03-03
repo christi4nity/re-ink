@@ -24,6 +24,7 @@ class PreferencesRepository @Inject constructor(
         private val KEY_FONT_SIZE = intPreferencesKey("font_size")
         private val KEY_LINE_HEIGHT = floatPreferencesKey("line_height")
         private val KEY_MARGIN_HORIZONTAL = intPreferencesKey("margin_horizontal")
+        private val KEY_MARGIN_VERTICAL = intPreferencesKey("margin_vertical")
         private val KEY_TEXT_ALIGN = stringPreferencesKey("text_align")
         private val KEY_PAGINATION_MODE = stringPreferencesKey("pagination_mode")
         private val KEY_SUBSTACK_SID = stringPreferencesKey("substack_sid")
@@ -38,6 +39,7 @@ class PreferencesRepository @Inject constructor(
                 fontSize = prefs[KEY_FONT_SIZE] ?: ReadingPreferences().fontSize,
                 lineHeight = prefs[KEY_LINE_HEIGHT] ?: ReadingPreferences().lineHeight,
                 marginHorizontal = prefs[KEY_MARGIN_HORIZONTAL] ?: ReadingPreferences().marginHorizontal,
+                marginVertical = prefs[KEY_MARGIN_VERTICAL] ?: ReadingPreferences().marginVertical,
                 textAlign = prefs[KEY_TEXT_ALIGN] ?: ReadingPreferences().textAlign,
                 paginationMode = prefs[KEY_PAGINATION_MODE] ?: ReadingPreferences().paginationMode,
             )
@@ -49,6 +51,7 @@ class PreferencesRepository @Inject constructor(
             store[KEY_FONT_SIZE] = prefs.fontSize
             store[KEY_LINE_HEIGHT] = prefs.lineHeight
             store[KEY_MARGIN_HORIZONTAL] = prefs.marginHorizontal
+            store[KEY_MARGIN_VERTICAL] = prefs.marginVertical
             store[KEY_TEXT_ALIGN] = prefs.textAlign
             store[KEY_PAGINATION_MODE] = prefs.paginationMode
         }

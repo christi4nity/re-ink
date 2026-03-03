@@ -5,6 +5,7 @@ data class ReadingPreferences(
     val fontSize: Int = 32,
     val lineHeight: Float = 1.4f,
     val marginHorizontal: Int = 144,
+    val marginVertical: Int = 12,
     val textAlign: String = "justify",
     val paginationMode: String = "paginated",
 )

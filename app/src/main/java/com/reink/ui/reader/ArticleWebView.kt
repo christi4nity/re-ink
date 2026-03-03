@@ -678,6 +678,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
             --font-size: ${prefs.fontSize}px;
             --line-height: ${prefs.lineHeight};
             --margin-horizontal: ${prefs.marginHorizontal}px;
+            --margin-vertical: ${prefs.marginVertical}px;
             --text-align: ${prefs.textAlign};
             --reader-overlay-height: 56px;
         }

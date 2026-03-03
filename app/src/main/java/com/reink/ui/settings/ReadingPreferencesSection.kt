@@ -114,12 +114,22 @@ fun ReadingPreferencesSection(
 
                 // Margins
                 LabeledSlider(
-                    label = "Margins",
+                    label = "Side margins",
                     value = preferences.marginHorizontal.toFloat(),
                     valueRange = 8f..192f,
                     displayValue = "${preferences.marginHorizontal}dp",
                     onValueChange = {
                         onPreferencesChanged(preferences.copy(marginHorizontal = it.toInt()))
+                    },
+                )
+
+                LabeledSlider(
+                    label = "Vertical margins",
+                    value = preferences.marginVertical.toFloat(),
+                    valueRange = 0f..96f,
+                    displayValue = "${preferences.marginVertical}dp",
+                    onValueChange = {
+                        onPreferencesChanged(preferences.copy(marginVertical = it.toInt()))
                     },
                 )
 
@@ -151,7 +161,7 @@ fun ReadingPreferencesSection(
                             "how comfortable long-form reading feels on an e-ink display.",
                         modifier = Modifier.padding(
                             horizontal = preferences.marginHorizontal.dp,
-                            vertical = 12.dp,
+                            vertical = preferences.marginVertical.dp,
                         ),
                         style = TextStyle(
                             fontFamily = previewFontFamily,

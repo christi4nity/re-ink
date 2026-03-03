@@ -3,6 +3,7 @@
     --font-size: 18px;
     --line-height: 1.6;
     --margin-horizontal: 16px;
+    --margin-vertical: 12px;
     --text-align: left;
 }
 
@@ -109,7 +110,7 @@ body {
     line-height: var(--line-height) !important;
     text-align: var(--text-align);
     margin: 0;
-    padding: 12px var(--margin-horizontal);
+    padding: var(--margin-vertical) var(--margin-horizontal);
     color: #000000;
     background: #ffffff;
     -webkit-font-smoothing: antialiased;
