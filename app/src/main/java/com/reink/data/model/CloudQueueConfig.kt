@@ -12,6 +12,13 @@ data class CloudQueueConfig(
             ""
         }
 
+    val setupUrl: String
+        get() = if (enabled && queueId.isNotBlank() && baseUrl.isNotBlank()) {
+            "$baseUrl/q/$queueId/setup"
+        } else {
+            ""
+        }
+
     val isConfigured: Boolean
         get() = enabled && queueId.isNotBlank()
 }

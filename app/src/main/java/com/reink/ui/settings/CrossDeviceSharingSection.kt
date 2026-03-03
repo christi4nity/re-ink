@@ -116,7 +116,8 @@ private fun ConfiguredSharingContent(
         }
     }
 
-    val qrBitmap = remember(shareUrl) { generateQrBitmap(shareUrl) }
+    val setupUrl = config.setupUrl
+    val qrBitmap = remember(setupUrl) { generateQrBitmap(setupUrl) }
     if (qrBitmap != null) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -124,17 +125,16 @@ private fun ConfiguredSharingContent(
         ) {
             Image(
                 painter = BitmapPainter(qrBitmap.asImageBitmap()),
-                contentDescription = "QR code for share URL",
+                contentDescription = "QR code for setup page",
                 modifier = Modifier.size(200.dp),
+            )
+            Text(
+                text = "Scan to set up iOS Shortcut",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
-
-    Text(
-        text = "POST {\"url\": \"...\"} to this URL from an iOS Shortcut or any HTTP client.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 
     if (status != null) {
         Text(
