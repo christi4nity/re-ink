@@ -1,0 +1,8 @@
+name = "reink-relay"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+account_id = "b614662d3586e9d97ef1bdb4d100e366"
+
+[[kv_namespaces]]
+binding = "REINK_QUEUE"
+id = "cbfbbab726c3437e9b2e3aa5be57cf02"

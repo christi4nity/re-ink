@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.reink.data.email.EmailContentSource
 import com.reink.data.email.EmailCredentials
 import com.reink.data.email.EmailCredentialsStore
+import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.Feed
 import com.reink.data.model.ReadingPreferences
+import com.reink.data.remote.CloudQueueClient
 import com.reink.data.repository.EmailSyncRepository
 import com.reink.data.repository.FeedRepository
 import com.reink.data.repository.PreferencesRepository
@@ -30,6 +32,9 @@ data class SettingsUiState(
     val emailTestResult: String? = null,
     val emailSyncStatus: String? = null,
     val showEmailConfigDialog: Boolean = false,
+    val cloudQueueConfig: CloudQueueConfig = CloudQueueConfig(),
+    val cloudQueueSetupInProgress: Boolean = false,
+    val cloudQueueStatus: String? = null,
 )
 
 private data class EmailState(
@@ -47,6 +52,7 @@ class SettingsViewModel @Inject constructor(
     private val emailCredentialsStore: EmailCredentialsStore,
     private val emailContentSource: EmailContentSource,
     private val emailSyncRepository: EmailSyncRepository,
+    private val cloudQueueClient: CloudQueueClient,
 ) : ViewModel() {
 
     private val showAddFeedDialog = MutableStateFlow(false)
@@ -55,6 +61,8 @@ class SettingsViewModel @Inject constructor(
     private val emailTestResult = MutableStateFlow<String?>(null)
     private val emailSyncStatus = MutableStateFlow<String?>(null)
     private val emailConfigured = MutableStateFlow(false)
+    private val cloudQueueSetupInProgress = MutableStateFlow(false)
+    private val cloudQueueStatus = MutableStateFlow<String?>(null)
 
     init {
         emailConfigured.value = emailCredentialsStore.isConfigured()
@@ -70,12 +78,33 @@ class SettingsViewModel @Inject constructor(
         EmailState(showDialog, testing, testResult, syncStatus, configured)
     }
 
+    private data class CloudQueueState(
+        val config: CloudQueueConfig = CloudQueueConfig(),
+        val setupInProgress: Boolean = false,
+        val status: String? = null,
+    )
+
+    private val cloudQueueState = combine(
+        preferencesRepository.observeCloudQueueConfig(),
+        cloudQueueSetupInProgress,
+        cloudQueueStatus,
+    ) { config, setting, status ->
+        CloudQueueState(config, setting, status)
+    }
+
     val uiState: StateFlow<SettingsUiState> = combine(
         feedRepository.observeRssFeeds(),
         preferencesRepository.observeReadingPreferences(),
         showAddFeedDialog,
         emailState,
-    ) { feeds, prefs, showDialog, email ->
+        cloudQueueState,
+    ) { flows ->
+        @Suppress("UNCHECKED_CAST")
+        val feeds = flows[0] as List<Feed>
+        val prefs = flows[1] as ReadingPreferences
+        val showDialog = flows[2] as Boolean
+        val email = flows[3] as EmailState
+        val cloud = flows[4] as CloudQueueState
         val creds = emailCredentialsStore.get()
         SettingsUiState(
             feeds = feeds,
@@ -88,6 +117,9 @@ class SettingsViewModel @Inject constructor(
             emailTestResult = email.testResult,
             emailSyncStatus = email.syncStatus,
             showEmailConfigDialog = email.showDialog,
+            cloudQueueConfig = cloud.config,
+            cloudQueueSetupInProgress = cloud.setupInProgress,
+            cloudQueueStatus = cloud.status,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -180,6 +212,36 @@ class SettingsViewModel @Inject constructor(
     fun updateReadingPreferences(prefs: ReadingPreferences) {
         viewModelScope.launch {
             preferencesRepository.updateReadingPreferences(prefs)
+        }
+    }
+
+    fun setupCloudQueue() {
+        viewModelScope.launch {
+            cloudQueueSetupInProgress.value = true
+            cloudQueueStatus.value = null
+            cloudQueueClient.createQueue().fold(
+                onSuccess = { queueId ->
+                    preferencesRepository.setCloudQueueConfig(
+                        CloudQueueConfig(
+                            enabled = true,
+                            queueId = queueId,
+                            baseUrl = CloudQueueClient.DEFAULT_BASE_URL,
+                        ),
+                    )
+                    cloudQueueStatus.value = "Cloud queue created"
+                },
+                onFailure = {
+                    cloudQueueStatus.value = "Setup failed: ${it.message}"
+                },
+            )
+            cloudQueueSetupInProgress.value = false
+        }
+    }
+
+    fun disableCloudQueue() {
+        viewModelScope.launch {
+            preferencesRepository.clearCloudQueue()
+            cloudQueueStatus.value = null
         }
     }
 }

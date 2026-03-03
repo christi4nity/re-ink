@@ -39,6 +39,16 @@ class SyncScheduler @Inject constructor(
             ExistingPeriodicWorkPolicy.KEEP,
             emailSyncRequest,
         )
+
+        val cloudQueueSyncRequest = PeriodicWorkRequestBuilder<CloudQueueSyncWorker>(
+            4, TimeUnit.HOURS,
+        ).setConstraints(constraints).build()
+
+        workManager.enqueueUniquePeriodicWork(
+            CloudQueueSyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            cloudQueueSyncRequest,
+        )
     }
 
     fun triggerImmediateSync() {
@@ -54,6 +64,10 @@ class SyncScheduler @Inject constructor(
             .setConstraints(constraints)
             .build()
 
+        val cloudQueueSync = OneTimeWorkRequestBuilder<CloudQueueSyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
         val readLaterSync = OneTimeWorkRequestBuilder<ReadLaterSyncWorker>()
             .setConstraints(constraints)
             .build()
@@ -62,6 +76,6 @@ class SyncScheduler @Inject constructor(
             "immediate_sync",
             ExistingWorkPolicy.REPLACE,
             feedSync,
-        ).then(emailSync).then(readLaterSync).enqueue()
+        ).then(emailSync).then(cloudQueueSync).then(readLaterSync).enqueue()
     }
 }

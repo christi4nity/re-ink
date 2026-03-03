@@ -33,8 +33,18 @@
 -keep class * extends androidx.work.Worker
 -keep class * extends androidx.work.ListenableWorker
 
+# ZXing (QR code generation)
+-keep class com.google.zxing.** { *; }
+-dontwarn com.google.zxing.**
+
 # Jakarta Mail (IMAP)
 -keep class jakarta.mail.** { *; }
 -keep class com.sun.mail.** { *; }
 -dontwarn jakarta.mail.**
 -dontwarn com.sun.mail.**
+
+# Google Tink (via security-crypto)
+-dontwarn com.google.errorprone.annotations.**
+
+# SLF4J (transitive from Readability4J)
+-dontwarn org.slf4j.impl.StaticLoggerBinder

@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.ReadingPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -30,6 +31,9 @@ class PreferencesRepository @Inject constructor(
         private val KEY_SUBSTACK_SID = stringPreferencesKey("substack_sid")
         private val KEY_LAST_EMAIL_SYNC = longPreferencesKey("last_email_sync")
         private val KEY_EMAIL_SYNC_ENABLED = booleanPreferencesKey("email_sync_enabled")
+        private val KEY_CLOUD_QUEUE_ENABLED = booleanPreferencesKey("cloud_queue_enabled")
+        private val KEY_CLOUD_QUEUE_ID = stringPreferencesKey("cloud_queue_id")
+        private val KEY_CLOUD_QUEUE_BASE_URL = stringPreferencesKey("cloud_queue_base_url")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -79,5 +83,39 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setLastEmailSync(timestamp: Long) {
         dataStore.edit { store -> store[KEY_LAST_EMAIL_SYNC] = timestamp }
+    }
+
+    fun observeCloudQueueConfig(): Flow<CloudQueueConfig> =
+        dataStore.data.map { prefs ->
+            CloudQueueConfig(
+                enabled = prefs[KEY_CLOUD_QUEUE_ENABLED] ?: false,
+                queueId = prefs[KEY_CLOUD_QUEUE_ID] ?: "",
+                baseUrl = prefs[KEY_CLOUD_QUEUE_BASE_URL] ?: "",
+            )
+        }
+
+    suspend fun getCloudQueueConfig(): CloudQueueConfig {
+        val prefs = dataStore.data.first()
+        return CloudQueueConfig(
+            enabled = prefs[KEY_CLOUD_QUEUE_ENABLED] ?: false,
+            queueId = prefs[KEY_CLOUD_QUEUE_ID] ?: "",
+            baseUrl = prefs[KEY_CLOUD_QUEUE_BASE_URL] ?: "",
+        )
+    }
+
+    suspend fun setCloudQueueConfig(config: CloudQueueConfig) {
+        dataStore.edit { store ->
+            store[KEY_CLOUD_QUEUE_ENABLED] = config.enabled
+            store[KEY_CLOUD_QUEUE_ID] = config.queueId
+            store[KEY_CLOUD_QUEUE_BASE_URL] = config.baseUrl
+        }
+    }
+
+    suspend fun clearCloudQueue() {
+        dataStore.edit { store ->
+            store[KEY_CLOUD_QUEUE_ENABLED] = false
+            store.remove(KEY_CLOUD_QUEUE_ID)
+            store.remove(KEY_CLOUD_QUEUE_BASE_URL)
+        }
     }
 }

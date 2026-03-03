@@ -24,6 +24,15 @@ object NetworkModule {
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
+    @PlainHttpClient
+    @Provides
+    @Singleton
+    fun providePlainOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+
     @Provides
     @Singleton
     fun provideRssParser(okHttpClient: OkHttpClient): RssParser =

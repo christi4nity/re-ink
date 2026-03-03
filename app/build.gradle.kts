@@ -104,4 +104,7 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+
+    // QR Code
+    implementation(libs.zxing.core)
 }

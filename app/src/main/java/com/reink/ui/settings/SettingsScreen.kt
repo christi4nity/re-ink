@@ -63,6 +63,16 @@ fun SettingsScreen(
             }
 
             item {
+                CrossDeviceSharingSection(
+                    config = state.cloudQueueConfig,
+                    setupInProgress = state.cloudQueueSetupInProgress,
+                    status = state.cloudQueueStatus,
+                    onSetup = { viewModel.setupCloudQueue() },
+                    onDisable = { viewModel.disableCloudQueue() },
+                )
+            }
+
+            item {
                 FeedManagementSection(
                     feeds = state.feeds,
                     showAddDialog = state.showAddFeedDialog,
