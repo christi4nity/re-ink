@@ -1,0 +1,4 @@
+[     810ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://unchartedterritories.tomaspueyo.com/why-is-australia-so-empty:0
+[    1033ms] [ERROR] Not signed in with the identity provider. @ https://unchartedterritories.tomaspueyo.com/why-is-australia-so-empty:0
+[    1092ms] [WARNING] Datadog Browser SDK: No storage available for session. We will not send any data. @ https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum.js:0
+[    1122ms] [WARNING] Datadog Browser SDK: No storage available for session. We will not send any data. @ https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum.js:0
