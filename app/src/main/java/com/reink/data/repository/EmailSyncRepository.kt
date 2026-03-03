@@ -1,6 +1,5 @@
 package com.reink.data.repository
 
-import android.util.Log
 import com.reink.data.email.EmailArticle
 import com.reink.data.email.EmailContentSource
 import com.reink.data.local.ArticleDao
@@ -27,7 +26,6 @@ class EmailSyncRepository @Inject constructor(
             .takeIf { it > 0 }
             ?: (System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000) // Default: last 30 days
 
-        Log.d(TAG, "Email sync starting (streaming), sinceTimestamp=$sinceTimestamp")
         var upgraded = 0
         var inserted = 0
         var skipped = 0
@@ -42,12 +40,10 @@ class EmailSyncRepository @Inject constructor(
                 }
             }
             .catch { e ->
-                Log.e(TAG, "Email stream error: ${e.message}", e)
                 error = e
             }
             .collect()
 
-        Log.d(TAG, "Sync done: upgraded=$upgraded, inserted=$inserted, skipped=$skipped")
         preferencesRepository.setLastEmailSync(System.currentTimeMillis())
 
         return if (error != null) {
@@ -58,12 +54,8 @@ class EmailSyncRepository @Inject constructor(
     }
 
     private suspend fun processEmail(email: EmailArticle): EmailAction {
-        Log.d(TAG, "Processing email: '${email.subject}' from ${email.senderAddress} [${email.substackSubdomain}]")
-        Log.d(TAG, "  viewOnlineUrl=${email.viewOnlineUrl}")
-
         // 1. Dedup: skip if we already processed this email
         if (articleDao.existsByEmailMessageId(email.messageId)) {
-            Log.d(TAG, "  -> SKIP: already processed (messageId exists)")
             return EmailAction.SKIPPED
         }
 
@@ -77,7 +69,6 @@ class EmailSyncRepository @Inject constructor(
 
             for (url in candidateUrls) {
                 if (articleDao.existsByUrl(url)) {
-                    Log.d(TAG, "  -> UPGRADE: matched existing article url=$url")
                     articleDao.updateContentByUrl(
                         url = url,
                         html = email.contentHtml,
@@ -92,7 +83,6 @@ class EmailSyncRepository @Inject constructor(
 
         // 3. Match to a feed — subdomain from List-Id is the most reliable signal
         val matchedFeed = matchSenderToFeed(email)
-        Log.d(TAG, "  matchedFeed=${matchedFeed?.title ?: "NONE"}")
 
         // 4. Insert: use matched feed, or create/reuse a feed for this sender
         val feed = matchedFeed ?: getOrCreateFeedForSender(email)
@@ -111,7 +101,6 @@ class EmailSyncRepository @Inject constructor(
         )
         articleDao.insertAllNew(listOf(entity))
         if (matchedFeed != null) autoLearnSenderPattern(email)
-        Log.d(TAG, "  -> INSERTED under feed '${feed.title}'")
         return EmailAction.INSERTED
     }
 
@@ -131,10 +120,6 @@ class EmailSyncRepository @Inject constructor(
 
     private suspend fun matchSenderToFeed(email: EmailArticle): FeedEntity? {
         val allFeeds = feedDao.getAllOnce()
-        Log.d(TAG, "  Matching against ${allFeeds.size} feeds (email subdomain=${email.substackSubdomain}):")
-        for (feed in allFeeds) {
-            Log.d(TAG, "    - '${feed.title}' subdomain=${feed.substackSubdomain} siteUrl=${feed.siteUrl}")
-        }
 
         // Strategy 1: Match by List-Id subdomain — most reliable, straight from email headers
         for (feed in allFeeds) {
@@ -193,8 +178,7 @@ class EmailSyncRepository @Inject constructor(
         if (pattern.isNotBlank()) {
             try {
                 feedDao.updateEmailSenderPattern(feed.id, pattern)
-            } catch (e: Exception) {
-                Log.w("EmailSync", "Failed to auto-learn sender pattern", e)
+            } catch (_: Exception) {
             }
         }
     }
@@ -229,7 +213,6 @@ class EmailSyncRepository @Inject constructor(
         // Use sender local part as pattern (e.g. "cubicanalytics"), not the domain ("substack.com")
         val senderLocal = email.senderAddress.substringBefore("@", "")
 
-        Log.d(TAG, "  Creating new feed '$title' for subdomain=$subdomain")
         val id = feedDao.insert(
             FeedEntity(
                 title = title,
@@ -246,7 +229,4 @@ class EmailSyncRepository @Inject constructor(
 
     private enum class EmailAction { UPGRADED, INSERTED, SKIPPED }
 
-    private companion object {
-        const val TAG = "EmailSync"
-    }
 }

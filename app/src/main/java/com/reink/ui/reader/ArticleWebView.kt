@@ -409,7 +409,6 @@ private class PageBridge(
 
     @JavascriptInterface
     fun reportPageCount(count: Int) {
-        android.util.Log.d("ReInk", "PageBridge: reportPageCount=$count")
         mainHandler.post {
             onPageCount(count)
         }
@@ -424,7 +423,7 @@ private class PageBridge(
 
     @JavascriptInterface
     fun debug(msg: String) {
-        android.util.Log.d("ReInk", "PageBridge: $msg")
+        // No-op: kept for JS interface compatibility
     }
 }
 

@@ -1,6 +1,5 @@
 package com.reink.data.remote
 
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.dankito.readability4j.Readability4J
@@ -43,9 +42,6 @@ class ArticleExtractor @Inject constructor(
     suspend fun extract(url: String): Result<ExtractedArticle> = withContext(Dispatchers.IO) {
         runCatching {
             val resolvedUrl = resolveRedirects(url)
-            if (resolvedUrl != url) {
-                Log.d(TAG, "Resolved redirect: $url -> $resolvedUrl")
-            }
 
             // Strategy 1: Browser UA (current behavior)
             val browserResult = fetchAndParse(resolvedUrl, resolvedUrl, BROWSER_USER_AGENT, "BrowserUA")
@@ -83,12 +79,10 @@ class ArticleExtractor @Inject constructor(
                     val location = response.header("Location")
                     if (response.code in 301..308 && location != null) location else null
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to resolve redirect for $current: ${e.message}")
+            } catch (_: Exception) {
                 null
             }
             if (next == null) return current
-            Log.d(TAG, "Redirect hop: $current -> $next")
             current = next
         }
         return current
@@ -111,20 +105,16 @@ class ArticleExtractor @Inject constructor(
 
             cleanClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    Log.d(TAG, "[$label] HTTP ${response.code} for $fetchUrl")
                     return null
                 }
 
                 val finalUrl = response.request.url.toString()
                 val html = response.body?.string()
                 if (html.isNullOrBlank()) {
-                    Log.d(TAG, "[$label] Empty response from $fetchUrl")
                     return null
                 }
-                Log.d(TAG, "[$label] Fetched ${html.length} chars from $finalUrl")
 
                 if (looksLikeAccessInterstitial(html)) {
-                    Log.w(TAG, "[$label] Anti-bot interstitial at $finalUrl")
                     return null
                 }
 
@@ -135,15 +125,11 @@ class ArticleExtractor @Inject constructor(
                 val extractedContent = article.contentWithUtf8Encoding.orEmpty().trim()
                 val textLength = extractedContent.replace(STRIP_TAGS_REGEX, "").trim().length
 
-                Log.d(TAG, "[$label] Readability: title='${extractedTitle.take(60)}', text=$textLength chars")
-
                 if (textLength < MIN_TEXT_LENGTH) {
-                    Log.d(TAG, "[$label] Insufficient content ($textLength chars), skipping")
                     return null
                 }
 
                 if (looksLikelyPaywalled(html, extractedContent)) {
-                    Log.w(TAG, "[$label] Likely paywalled ($textLength chars), skipping")
                     return null
                 }
 
@@ -152,7 +138,6 @@ class ArticleExtractor @Inject constructor(
                     ?: extractHtmlTitle(html)
                     ?: extractedTitle
 
-                Log.d(TAG, "[$label] Success: '$title' ($textLength chars)")
                 ExtractedArticle(
                     title = title,
                     contentHtml = extractedContent,
@@ -161,15 +146,12 @@ class ArticleExtractor @Inject constructor(
                         ?: extractOgDescription(html),
                 )
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "[$label] Failed: ${e.message}")
+        } catch (_: Exception) {
             null
         }
     }
 
     companion object {
-        private const val TAG = "ArticleExtractor"
-
         private const val BROWSER_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; Pixel 7) " +
                 "AppleWebKit/537.36 (KHTML, like Gecko) " +

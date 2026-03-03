@@ -4,7 +4,6 @@ import com.reink.data.local.ReadLaterDao
 import com.reink.data.local.ReadLaterEntity
 import com.reink.data.model.FetchStatus
 import com.reink.data.model.ReadLaterItem
-import android.util.Log
 import com.reink.data.remote.ArticleExtractor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -61,8 +60,7 @@ class ReadLaterRepository @Inject constructor(
 
             // Try OkHttp + Readability4J first (fast), fall back to WebView + Readability.js
             val result = articleExtractor.extract(entity.url)
-                .recoverCatching { firstError ->
-                    Log.d("ReadLater", "OkHttp extraction failed, trying WebView: ${firstError.message}")
+                .recoverCatching {
                     webViewArticleExtractor.extract(entity.url).getOrThrow()
                 }
 
@@ -78,8 +76,7 @@ class ReadLaterRepository @Inject constructor(
                     )
                     fetched++
                 },
-                onFailure = { error ->
-                    Log.e("ReadLater", "All extraction methods failed: ${entity.url}", error)
+                onFailure = {
                     readLaterDao.updateContent(
                         id = entity.id,
                         status = FetchStatus.FAILED.name,

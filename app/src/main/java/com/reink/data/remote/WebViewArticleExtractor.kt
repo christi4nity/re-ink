@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -55,7 +54,6 @@ class WebViewArticleExtractor @Inject constructor(
 
     suspend fun extract(url: String): Result<ExtractedArticle> {
         val resolvedUrl = resolveRedirects(url)
-        Log.d(TAG, "WebView extraction starting for $resolvedUrl (from $url)")
 
         val result = withTimeoutOrNull(TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
@@ -79,7 +77,10 @@ class WebViewArticleExtractor @Inject constructor(
 
                     webView.webChromeClient = object : WebChromeClient() {
                         override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
-                            Log.d(TAG, "JS [${msg.messageLevel()}] ${msg.message()}")
+                            android.util.Log.d(
+                                "WebViewExtract",
+                                "JS [${msg.messageLevel()}] ${msg.message()}",
+                            )
                             return true
                         }
                     }
@@ -98,12 +99,9 @@ class WebViewArticleExtractor @Inject constructor(
                             if (pageUrl == "about:blank" || injected) return
                             injected = true
 
-                            Log.d(TAG, "onPageFinished: $pageUrl, scheduling Readability.js injection")
                             // Wait for JS rendering, then inject Readability
                             mainHandler.postDelayed({
-                                Log.d(TAG, "Injecting Readability.js (${readabilityJs.length} chars)")
                                 view.evaluateJavascript(readabilityJs) {
-                                    Log.d(TAG, "Readability.js injected, running extraction")
                                     view.evaluateJavascript(EXTRACTION_JS, null)
                                 }
                             }, RENDER_DELAY_MS)
@@ -150,7 +148,6 @@ class WebViewArticleExtractor @Inject constructor(
         fun onResult(title: String, content: String, siteName: String, domain: String, excerpt: String) {
             if (reported) return
             reported = true
-            Log.d(TAG, "Extraction result: title='${title.take(60)}', content=${content.length} chars")
             mainHandler.post {
                 val textLength = content.replace(Regex("<[^>]+>"), "").trim().length
                 if (textLength < 200) {
@@ -172,13 +169,11 @@ class WebViewArticleExtractor @Inject constructor(
         fun onError(message: String) {
             if (reported) return
             reported = true
-            Log.e(TAG, "Extraction error: $message")
             mainHandler.post { onResult(null) }
         }
     }
 
     companion object {
-        private const val TAG = "WebViewExtract"
         private const val TIMEOUT_MS = 30_000L
         private const val RENDER_DELAY_MS = 2000L
 
