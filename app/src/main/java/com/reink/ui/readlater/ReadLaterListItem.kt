@@ -72,6 +72,15 @@ fun ReadLaterListItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (!item.excerpt.isNullOrBlank()) {
+                    Text(
+                        text = item.excerpt,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,

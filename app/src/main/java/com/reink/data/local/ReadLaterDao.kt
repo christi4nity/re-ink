@@ -20,8 +20,8 @@ interface ReadLaterDao {
     @Insert
     suspend fun insert(item: ReadLaterEntity): Long
 
-    @Query("UPDATE read_later SET fetchStatus = :status, title = :title, contentHtml = :contentHtml, sourceDomain = :sourceDomain WHERE id = :id")
-    suspend fun updateContent(id: Long, status: String, title: String, contentHtml: String, sourceDomain: String? = null)
+    @Query("UPDATE read_later SET fetchStatus = :status, title = :title, contentHtml = :contentHtml, sourceDomain = :sourceDomain, excerpt = :excerpt WHERE id = :id")
+    suspend fun updateContent(id: Long, status: String, title: String, contentHtml: String, sourceDomain: String? = null, excerpt: String? = null)
 
     @Query("UPDATE read_later SET isRead = 1 WHERE id = :id")
     suspend fun markRead(id: Long)

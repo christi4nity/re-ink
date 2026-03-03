@@ -10,4 +10,5 @@ data class ReadLaterItem(
     val fetchStatus: FetchStatus = FetchStatus.PENDING,
     val isRead: Boolean = false,
     val sourceDomain: String? = null,
+    val excerpt: String? = null,
 )

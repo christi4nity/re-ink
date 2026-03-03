@@ -17,6 +17,7 @@ data class ReadLaterEntity(
     val fetchStatus: String,
     val isRead: Boolean,
     val sourceDomain: String? = null,
+    val excerpt: String? = null,
 ) {
     fun toModel(): ReadLaterItem = ReadLaterItem(
         id = id,
@@ -28,6 +29,7 @@ data class ReadLaterEntity(
         fetchStatus = FetchStatus.valueOf(fetchStatus),
         isRead = isRead,
         sourceDomain = sourceDomain ?: ArticleExtractor.extractDomain(url),
+        excerpt = excerpt,
     )
 
     companion object {
@@ -41,6 +43,7 @@ data class ReadLaterEntity(
             fetchStatus = item.fetchStatus.name,
             isRead = item.isRead,
             sourceDomain = item.sourceDomain,
+            excerpt = item.excerpt,
         )
     }
 }

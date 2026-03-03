@@ -15,12 +15,24 @@ data class ExtractedArticle(
     val title: String,
     val contentHtml: String,
     val sourceDomain: String,
+    val excerpt: String? = null,
 )
 
 @Singleton
 class ArticleExtractor @Inject constructor(
     private val okHttpClient: OkHttpClient,
 ) {
+    // Clean client without auth interceptor — for following redirects from substack.com
+    // to external sites without cookies interfering
+    private val cleanClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
+
     suspend fun extract(url: String): Result<ExtractedArticle> = withContext(Dispatchers.IO) {
         runCatching {
             val request = Request.Builder()
@@ -31,14 +43,16 @@ class ArticleExtractor @Inject constructor(
                 .header("Upgrade-Insecure-Requests", "1")
                 .build()
 
-            okHttpClient.newCall(request).execute().use { response ->
+            cleanClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     throw IllegalStateException("HTTP ${response.code} while fetching $url")
                 }
 
                 val finalUrl = response.request.url.toString()
+                Log.d(TAG, "Fetched $url -> $finalUrl (HTTP ${response.code})")
                 val html = response.body?.string()
                     ?: throw IllegalStateException("Empty response from $url")
+                Log.d(TAG, "Response body: ${html.length} chars")
 
                 if (looksLikeAccessInterstitial(html)) {
                     Log.w(TAG, "Possible anti-bot interstitial at $finalUrl")
@@ -49,19 +63,31 @@ class ArticleExtractor @Inject constructor(
 
                 val extractedTitle = article.title.orEmpty().trim()
                 val extractedContent = article.contentWithUtf8Encoding.orEmpty().trim()
+                // Strip HTML tags to measure actual text content
+                val textLength = extractedContent.replace(Regex("<[^>]+>"), "").trim().length
 
-                if (extractedContent.isBlank()) {
-                    throw IllegalStateException("No extractable article content at $finalUrl")
+                Log.d(TAG, "Readability result: title='${extractedTitle.take(60)}', content=${extractedContent.length} chars, text=$textLength chars")
+
+                if (textLength < 200) {
+                    throw IllegalStateException("Insufficient content extracted at $finalUrl ($textLength chars text)")
                 }
 
                 if (looksLikelyPaywalled(html, extractedContent)) {
                     Log.w(TAG, "Content may be paywalled at $finalUrl (${extractedContent.length} chars)")
                 }
 
+                // Use Readability title, fall back to <title> tag or og:title
+                val title = extractedTitle.takeIf { it.isNotBlank() && !it.startsWith("http") }
+                    ?: extractOgTitle(html)
+                    ?: extractHtmlTitle(html)
+                    ?: extractedTitle
+
                 ExtractedArticle(
-                    title = extractedTitle,
+                    title = title,
                     contentHtml = extractedContent,
                     sourceDomain = extractSiteName(html) ?: extractDomain(finalUrl),
+                    excerpt = article.excerpt?.trim()?.takeIf { it.isNotBlank() }
+                        ?: extractOgDescription(html),
                 )
             }
         }
@@ -101,6 +127,33 @@ class ArticleExtractor @Inject constructor(
             "membership required",
             "already a subscriber",
         )
+
+        private val OG_TITLE_REGEX =
+            Regex("""<meta[^>]+property\s*=\s*["']og:title["'][^>]+content\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+        private val OG_TITLE_REVERSE_REGEX =
+            Regex("""<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:title["']""", RegexOption.IGNORE_CASE)
+        private val HTML_TITLE_REGEX =
+            Regex("""<title[^>]*>([^<]+)</title>""", RegexOption.IGNORE_CASE)
+
+        fun extractOgTitle(html: String): String? {
+            val match = OG_TITLE_REGEX.find(html) ?: OG_TITLE_REVERSE_REGEX.find(html)
+            return match?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("http") }
+        }
+
+        fun extractHtmlTitle(html: String): String? {
+            val match = HTML_TITLE_REGEX.find(html)
+            return match?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() && !it.startsWith("http") }
+        }
+
+        private val OG_DESCRIPTION_REGEX =
+            Regex("""<meta[^>]+property\s*=\s*["']og:description["'][^>]+content\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+        private val OG_DESCRIPTION_REVERSE_REGEX =
+            Regex("""<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']og:description["']""", RegexOption.IGNORE_CASE)
+
+        fun extractOgDescription(html: String): String? {
+            val match = OG_DESCRIPTION_REGEX.find(html) ?: OG_DESCRIPTION_REVERSE_REGEX.find(html)
+            return match?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+        }
 
         private val OG_SITE_NAME_REGEX =
             Regex("""<meta[^>]+property\s*=\s*["']og:site_name["'][^>]+content\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)

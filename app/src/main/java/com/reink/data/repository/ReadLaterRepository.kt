@@ -15,6 +15,7 @@ import javax.inject.Singleton
 class ReadLaterRepository @Inject constructor(
     private val readLaterDao: ReadLaterDao,
     private val articleExtractor: ArticleExtractor,
+    private val webViewArticleExtractor: com.reink.data.remote.WebViewArticleExtractor,
 ) {
     fun observeAll(): Flow<List<ReadLaterItem>> =
         readLaterDao.getAll().map { entities -> entities.map { it.toModel() } }
@@ -58,7 +59,14 @@ class ReadLaterRepository @Inject constructor(
                 sourceDomain = entity.sourceDomain,
             )
 
-            articleExtractor.extract(entity.url).fold(
+            // Try OkHttp + Readability4J first (fast), fall back to WebView + Readability.js
+            val result = articleExtractor.extract(entity.url)
+                .recoverCatching { firstError ->
+                    Log.d("ReadLater", "OkHttp extraction failed, trying WebView: ${firstError.message}")
+                    webViewArticleExtractor.extract(entity.url).getOrThrow()
+                }
+
+            result.fold(
                 onSuccess = { extracted ->
                     readLaterDao.updateContent(
                         id = entity.id,
@@ -66,11 +74,12 @@ class ReadLaterRepository @Inject constructor(
                         title = extracted.title,
                         contentHtml = extracted.contentHtml,
                         sourceDomain = extracted.sourceDomain,
+                        excerpt = extracted.excerpt,
                     )
                     fetched++
                 },
                 onFailure = { error ->
-                    Log.e("ReadLater", "Failed to extract: ${entity.url}", error)
+                    Log.e("ReadLater", "All extraction methods failed: ${entity.url}", error)
                     readLaterDao.updateContent(
                         id = entity.id,
                         status = FetchStatus.FAILED.name,
