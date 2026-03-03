@@ -6,7 +6,7 @@ Built for the Boox NoteAir5C. A personal project for an audience of one, publish
 
 ## Features
 
-- Fetches RSS feeds from Substack publications, including paid content via cookie auth
+- RSS feed ingestion for Substack publications
 - Email-based article ingestion (IMAP) for paid content that RSS can't deliver
 - Clean WebView reader with customizable typography (font, size, line height, margins, alignment)
 - Paginated and scroll reading modes
