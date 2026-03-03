@@ -22,8 +22,6 @@ data class ExtractedArticle(
 class ArticleExtractor @Inject constructor(
     private val okHttpClient: OkHttpClient,
 ) {
-    // Clean client without auth interceptor — for following redirects from substack.com
-    // to external sites without cookies interfering
     private val cleanClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .followRedirects(true)
@@ -33,11 +31,79 @@ class ArticleExtractor @Inject constructor(
             .build()
     }
 
+    private val noRedirectClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
+
     suspend fun extract(url: String): Result<ExtractedArticle> = withContext(Dispatchers.IO) {
         runCatching {
+            val resolvedUrl = resolveRedirects(url)
+            if (resolvedUrl != url) {
+                Log.d(TAG, "Resolved redirect: $url -> $resolvedUrl")
+            }
+
+            // Strategy 1: Browser UA (current behavior)
+            val browserResult = fetchAndParse(resolvedUrl, resolvedUrl, BROWSER_USER_AGENT, "BrowserUA")
+            if (browserResult != null) return@runCatching browserResult
+
+            // Strategy 2: Googlebot UA
+            val googlebotResult = fetchAndParse(resolvedUrl, resolvedUrl, GOOGLEBOT_USER_AGENT, "Googlebot")
+            if (googlebotResult != null) return@runCatching googlebotResult
+
+            // Strategy 3: Google Cache
+            val cacheUrl = "$GOOGLE_CACHE_PREFIX${java.net.URLEncoder.encode(resolvedUrl, "UTF-8")}"
+            val cacheResult = fetchAndParse(cacheUrl, resolvedUrl, BROWSER_USER_AGENT, "GoogleCache")
+            if (cacheResult != null) return@runCatching cacheResult
+
+            // Strategy 4: archive.org Wayback Machine
+            val archiveUrl = "$ARCHIVE_ORG_PREFIX$resolvedUrl"
+            val archiveResult = fetchAndParse(archiveUrl, resolvedUrl, BROWSER_USER_AGENT, "ArchiveOrg")
+            if (archiveResult != null) return@runCatching archiveResult
+
+            throw IllegalStateException("All extraction strategies failed for $resolvedUrl")
+        }
+    }
+
+    private fun resolveRedirects(url: String): String {
+        if (!url.contains("/redirect/") && !url.contains("link.")) return url
+        var current = url
+        repeat(MAX_REDIRECT_HOPS) {
+            val next = try {
+                val request = Request.Builder()
+                    .url(current)
+                    .head()
+                    .header("User-Agent", BROWSER_USER_AGENT)
+                    .build()
+                noRedirectClient.newCall(request).execute().use { response ->
+                    val location = response.header("Location")
+                    if (response.code in 301..308 && location != null) location else null
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to resolve redirect for $current: ${e.message}")
+                null
+            }
+            if (next == null) return current
+            Log.d(TAG, "Redirect hop: $current -> $next")
+            current = next
+        }
+        return current
+    }
+
+    private fun fetchAndParse(
+        fetchUrl: String,
+        articleUrl: String,
+        userAgent: String,
+        label: String,
+    ): ExtractedArticle? {
+        return try {
             val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", BROWSER_USER_AGENT)
+                .url(fetchUrl)
+                .header("User-Agent", userAgent)
                 .header("Accept", ACCEPT_HEADER)
                 .header("Accept-Language", ACCEPT_LANGUAGE_HEADER)
                 .header("Upgrade-Insecure-Requests", "1")
@@ -45,51 +111,59 @@ class ArticleExtractor @Inject constructor(
 
             cleanClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IllegalStateException("HTTP ${response.code} while fetching $url")
+                    Log.d(TAG, "[$label] HTTP ${response.code} for $fetchUrl")
+                    return null
                 }
 
                 val finalUrl = response.request.url.toString()
-                Log.d(TAG, "Fetched $url -> $finalUrl (HTTP ${response.code})")
                 val html = response.body?.string()
-                    ?: throw IllegalStateException("Empty response from $url")
-                Log.d(TAG, "Response body: ${html.length} chars")
+                if (html.isNullOrBlank()) {
+                    Log.d(TAG, "[$label] Empty response from $fetchUrl")
+                    return null
+                }
+                Log.d(TAG, "[$label] Fetched ${html.length} chars from $finalUrl")
 
                 if (looksLikeAccessInterstitial(html)) {
-                    Log.w(TAG, "Possible anti-bot interstitial at $finalUrl")
+                    Log.w(TAG, "[$label] Anti-bot interstitial at $finalUrl")
+                    return null
                 }
 
-                val readability = Readability4J(finalUrl, html)
+                val readability = Readability4J(articleUrl, html)
                 val article = readability.parse()
 
                 val extractedTitle = article.title.orEmpty().trim()
                 val extractedContent = article.contentWithUtf8Encoding.orEmpty().trim()
-                // Strip HTML tags to measure actual text content
-                val textLength = extractedContent.replace(Regex("<[^>]+>"), "").trim().length
+                val textLength = extractedContent.replace(STRIP_TAGS_REGEX, "").trim().length
 
-                Log.d(TAG, "Readability result: title='${extractedTitle.take(60)}', content=${extractedContent.length} chars, text=$textLength chars")
+                Log.d(TAG, "[$label] Readability: title='${extractedTitle.take(60)}', text=$textLength chars")
 
-                if (textLength < 200) {
-                    throw IllegalStateException("Insufficient content extracted at $finalUrl ($textLength chars text)")
+                if (textLength < MIN_TEXT_LENGTH) {
+                    Log.d(TAG, "[$label] Insufficient content ($textLength chars), skipping")
+                    return null
                 }
 
                 if (looksLikelyPaywalled(html, extractedContent)) {
-                    Log.w(TAG, "Content may be paywalled at $finalUrl (${extractedContent.length} chars)")
+                    Log.w(TAG, "[$label] Likely paywalled ($textLength chars), skipping")
+                    return null
                 }
 
-                // Use Readability title, fall back to <title> tag or og:title
                 val title = extractedTitle.takeIf { it.isNotBlank() && !it.startsWith("http") }
                     ?: extractOgTitle(html)
                     ?: extractHtmlTitle(html)
                     ?: extractedTitle
 
+                Log.d(TAG, "[$label] Success: '$title' ($textLength chars)")
                 ExtractedArticle(
                     title = title,
                     contentHtml = extractedContent,
-                    sourceDomain = extractSiteName(html) ?: extractDomain(finalUrl),
+                    sourceDomain = extractSiteName(html) ?: extractDomain(articleUrl),
                     excerpt = article.excerpt?.trim()?.takeIf { it.isNotBlank() }
                         ?: extractOgDescription(html),
                 )
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "[$label] Failed: ${e.message}")
+            null
         }
     }
 
@@ -100,10 +174,19 @@ class ArticleExtractor @Inject constructor(
             "Mozilla/5.0 (Linux; Android 14; Pixel 7) " +
                 "AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/122.0.0.0 Mobile Safari/537.36"
+        private const val GOOGLEBOT_USER_AGENT =
+            "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
         private const val ACCEPT_HEADER =
             "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         private const val ACCEPT_LANGUAGE_HEADER = "en-US,en;q=0.9"
+        private const val MIN_TEXT_LENGTH = 200
         private const val MIN_LIKELY_FULL_CONTENT_LENGTH = 900
+        private const val MAX_REDIRECT_HOPS = 5
+        private const val GOOGLE_CACHE_PREFIX =
+            "https://webcache.googleusercontent.com/search?q=cache:"
+        private const val ARCHIVE_ORG_PREFIX =
+            "https://web.archive.org/web/"
+        private val STRIP_TAGS_REGEX = Regex("<[^>]+>")
 
         private val interstitialMarkers = listOf(
             "__cf_chl_",
