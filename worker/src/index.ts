@@ -52,14 +52,24 @@ export default {
       return setupPage(request, queueId);
     }
 
-    // GET /q/:id/shortcut — downloadable .shortcut file
-    if (method === "GET" && subPath === "/shortcut") {
-      return shortcutFile(request, queueId);
-    }
-
     // POST /q/:id/items — add item
     if (method === "POST" && subPath === "/items") {
       return addItem(env, queueId, request);
+    }
+
+    // GET /q/:id/add?url=... — add item (simple, for iOS Shortcuts)
+    if (method === "GET" && subPath === "/add") {
+      const addUrl = url.searchParams.get("url");
+      if (!addUrl || !URL_RE.test(addUrl)) {
+        return error("Missing or invalid ?url= parameter", 400);
+      }
+      return addItemDirect(env, queueId, addUrl);
+    }
+
+    // GET /q/:id/debug — show last POST attempt (temporary)
+    if (method === "GET" && subPath === "/debug") {
+      const last = await env.REINK_QUEUE.get(`${queueId}:debug`);
+      return json(last ? JSON.parse(last) : { message: "no debug data" });
     }
 
     // GET /q/:id/items — list items
@@ -78,9 +88,8 @@ export default {
 
 function setupPage(request: Request, queueId: string): Response {
   const baseUrl = new URL(request.url).origin;
-  const postUrl = `${baseUrl}/q/${queueId}/items`;
-  const shortcutUrl = `${baseUrl}/q/${queueId}/shortcut`;
-  const importUrl = `shortcuts://import-shortcut?url=${encodeURIComponent(shortcutUrl)}&name=${encodeURIComponent("Save to re:ink")}`;
+  const addUrl = `${baseUrl}/q/${queueId}/add?url=`;
+  const icloudShortcut = "https://www.icloud.com/shortcuts/5cf14ef5766442a1a4254d7eefaa2a10";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -98,18 +107,23 @@ function setupPage(request: Request, queueId: string): Response {
   .section-title { font-size: 13px; font-weight: 600; color: #666;
                    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
   .url-box { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px;
-             padding: 12px; font-family: monospace; font-size: 13px; word-break: break-all;
-             margin-bottom: 8px; }
+             padding: 12px; font-family: monospace; font-size: 13px; word-break: break-all; }
   .btn { display: block; width: 100%; padding: 14px; border: 2px solid #111;
          background: #fff; color: #111; font-size: 16px; font-weight: 600;
-         text-align: center; text-decoration: none; border-radius: 8px; cursor: pointer;
-         margin-bottom: 8px; }
+         text-align: center; text-decoration: none; border-radius: 8px; cursor: pointer; }
   .btn:active { background: #111; color: #fff; }
   .btn-primary { background: #111; color: #fff; }
   .btn-primary:active { background: #333; }
   .copied { background: #111; color: #fff; }
-  .note { font-size: 13px; color: #666; line-height: 1.4; }
-  .divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+  .note { font-size: 13px; color: #666; line-height: 1.4; margin-top: 8px; }
+  .steps { padding-left: 0; list-style: none; counter-reset: step; margin-top: 12px; }
+  .steps li { counter-increment: step; padding: 10px 0; padding-left: 32px; position: relative;
+              font-size: 15px; line-height: 1.4; }
+  .steps li::before { content: counter(step); position: absolute; left: 0; top: 10px;
+                      width: 22px; height: 22px; background: #111; color: #fff;
+                      border-radius: 50%; font-size: 12px; font-weight: 700;
+                      display: flex; align-items: center; justify-content: center; }
+  .steps li + li { border-top: 1px solid #eee; }
 </style>
 </head>
 <body>
@@ -118,26 +132,27 @@ function setupPage(request: Request, queueId: string): Response {
 <p class="subtitle">Share articles to your read-later queue</p>
 
 <div class="section">
-  <a class="btn btn-primary" href="${importUrl}">Add Shortcut to iPhone</a>
-  <p class="note">Opens the Shortcuts app and installs "Save to re:ink". Then share any URL from Safari and pick the shortcut.</p>
+  <ol class="steps">
+    <li><button class="btn btn-primary" id="copyBtn" onclick="copyUrl()">Copy your base URL</button></li>
+    <li><a class="btn" href="${icloudShortcut}">Add Shortcut to iPhone</a>
+      <p class="note">When prompted, paste the URL you just copied.</p></li>
+    <li>Share any link from Safari → pick <strong>"Save to re:ink"</strong></li>
+  </ol>
 </div>
 
-<hr class="divider">
-
 <div class="section">
-  <div class="section-title">API endpoint</div>
-  <div class="url-box" id="url">${postUrl}</div>
-  <button class="btn" id="copyBtn" onclick="copyUrl()">Copy URL</button>
-  <p class="note">POST <code>{"url":"..."}</code> from any HTTP client.</p>
+  <div class="section-title">Your base URL</div>
+  <div class="url-box" id="url">${addUrl}</div>
+  <p class="note">The shortcut appends the shared article URL to the end and opens it.</p>
 </div>
 
 <script>
 function copyUrl() {
-  navigator.clipboard.writeText('${postUrl}').then(() => {
+  navigator.clipboard.writeText('${addUrl}').then(() => {
     const btn = document.getElementById('copyBtn');
     btn.textContent = 'Copied!';
     btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copy URL'; btn.classList.remove('copied'); }, 2000);
+    setTimeout(() => { btn.textContent = 'Copy your base URL'; btn.classList.remove('copied'); }, 2000);
   });
 }
 </script>
@@ -146,125 +161,6 @@ function copyUrl() {
 
   return new Response(html, {
     headers: { "Content-Type": "text/html;charset=utf-8" },
-  });
-}
-
-function shortcutFile(request: Request, queueId: string): Response {
-  const baseUrl = new URL(request.url).origin;
-  const postUrl = `${baseUrl}/q/${queueId}/items`;
-
-  // U+FFFC (Object Replacement Character) is how Shortcuts represents
-  // variable references inline. The attachmentsByRange dict maps the
-  // character position to the variable type (ExtensionInput = Share Sheet).
-  const plist = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>WFWorkflowActions</key>
-  <array>
-    <dict>
-      <key>WFWorkflowActionIdentifier</key>
-      <string>is.workflow.actions.downloadurl</string>
-      <key>WFWorkflowActionParameters</key>
-      <dict>
-        <key>WFURL</key>
-        <string>${postUrl}</string>
-        <key>WFHTTPMethod</key>
-        <string>POST</string>
-        <key>WFHTTPBodyType</key>
-        <string>Json</string>
-        <key>WFJSONValues</key>
-        <dict>
-          <key>Value</key>
-          <dict>
-            <key>WFDictionaryFieldValueItems</key>
-            <array>
-              <dict>
-                <key>WFItemType</key>
-                <integer>0</integer>
-                <key>WFKey</key>
-                <dict>
-                  <key>Value</key>
-                  <dict>
-                    <key>string</key>
-                    <string>url</string>
-                  </dict>
-                  <key>WFSerializationType</key>
-                  <string>WFTextTokenString</string>
-                </dict>
-                <key>WFValue</key>
-                <dict>
-                  <key>Value</key>
-                  <dict>
-                    <key>string</key>
-                    <string>\uFFFC</string>
-                    <key>attachmentsByRange</key>
-                    <dict>
-                      <key>{0, 1}</key>
-                      <dict>
-                        <key>Type</key>
-                        <string>ExtensionInput</string>
-                      </dict>
-                    </dict>
-                  </dict>
-                  <key>WFSerializationType</key>
-                  <string>WFTextTokenAttachment</string>
-                </dict>
-              </dict>
-            </array>
-          </dict>
-          <key>WFSerializationType</key>
-          <string>WFDictionaryFieldValue</string>
-        </dict>
-      </dict>
-    </dict>
-    <dict>
-      <key>WFWorkflowActionIdentifier</key>
-      <string>is.workflow.actions.notification</string>
-      <key>WFWorkflowActionParameters</key>
-      <dict>
-        <key>WFNotificationActionBody</key>
-        <string>Saved to re:ink</string>
-        <key>WFNotificationActionTitle</key>
-        <string>re:ink</string>
-      </dict>
-    </dict>
-  </array>
-  <key>WFWorkflowClientVersion</key>
-  <string>2302.0.4</string>
-  <key>WFWorkflowHasOutputFallback</key>
-  <false/>
-  <key>WFWorkflowHasShortcutInputVariables</key>
-  <true/>
-  <key>WFWorkflowIcon</key>
-  <dict>
-    <key>WFWorkflowIconGlyphNumber</key>
-    <integer>59751</integer>
-    <key>WFWorkflowIconStartColor</key>
-    <integer>463140863</integer>
-  </dict>
-  <key>WFWorkflowImportQuestions</key>
-  <array/>
-  <key>WFWorkflowInputContentItemClasses</key>
-  <array>
-    <string>WFURLContentItem</string>
-  </array>
-  <key>WFWorkflowMinimumClientVersion</key>
-  <integer>900</integer>
-  <key>WFWorkflowMinimumClientVersionString</key>
-  <string>900</string>
-  <key>WFWorkflowTypes</key>
-  <array>
-    <string>ActionExtension</string>
-  </array>
-</dict>
-</plist>`;
-
-  return new Response(plist, {
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": 'attachment; filename="Save to re-ink.shortcut"',
-    },
   });
 }
 
@@ -283,21 +179,39 @@ async function addItem(
   queueId: string,
   request: Request,
 ): Promise<Response> {
-  let body: { url?: string };
+  const rawBody = await request.text();
+  const contentType = request.headers.get("content-type") || "";
+  const debugData = {
+    timestamp: new Date().toISOString(),
+    contentType,
+    rawBody: rawBody.slice(0, 500),
+    method: request.method,
+    url: request.url,
+  };
+  await env.REINK_QUEUE.put(`${queueId}:debug`, JSON.stringify(debugData), {
+    expirationTtl: 3600,
+  });
+
+  let parsed: Record<string, unknown>;
   try {
-    body = await request.json();
+    parsed = JSON.parse(rawBody);
   } catch {
     return error("Invalid JSON", 400);
   }
 
-  if (!body.url || typeof body.url !== "string" || !URL_RE.test(body.url)) {
+  // Accept both "url" and "URL" (iOS Shortcuts sends uppercase keys)
+  const rawUrl = parsed.url ?? parsed.URL;
+  // Shortcuts may wrap the value in an array
+  const urlValue = Array.isArray(rawUrl) ? rawUrl[0] : rawUrl;
+
+  if (!urlValue || typeof urlValue !== "string" || !URL_RE.test(urlValue)) {
     return error("Invalid or missing url (must be http/https)", 400);
   }
 
   const itemId = crypto.randomUUID();
   const item = {
     id: itemId,
-    url: body.url,
+    url: urlValue,
     addedAt: new Date().toISOString(),
   };
 
@@ -306,6 +220,31 @@ async function addItem(
   });
 
   // Refresh meta TTL
+  await env.REINK_QUEUE.put(
+    `${queueId}:meta`,
+    JSON.stringify({ createdAt: new Date().toISOString() }),
+    { expirationTtl: TTL_SECONDS },
+  );
+
+  return json({ id: itemId }, 201);
+}
+
+async function addItemDirect(
+  env: Env,
+  queueId: string,
+  itemUrl: string,
+): Promise<Response> {
+  const itemId = crypto.randomUUID();
+  const item = {
+    id: itemId,
+    url: itemUrl,
+    addedAt: new Date().toISOString(),
+  };
+
+  await env.REINK_QUEUE.put(`${queueId}:${itemId}`, JSON.stringify(item), {
+    expirationTtl: TTL_SECONDS,
+  });
+
   await env.REINK_QUEUE.put(
     `${queueId}:meta`,
     JSON.stringify({ createdAt: new Date().toISOString() }),
