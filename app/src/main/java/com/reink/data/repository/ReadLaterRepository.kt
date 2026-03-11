@@ -97,6 +97,9 @@ class ReadLaterRepository @Inject constructor(
     suspend fun unarchive(id: Long) =
         readLaterDao.unarchiveById(id)
 
+    fun observeUnread(): Flow<List<ReadLaterItem>> =
+        readLaterDao.getUnread().map { entities -> entities.map { it.toModel() } }
+
     fun observeArchived(): Flow<List<ReadLaterItem>> =
         readLaterDao.getArchived().map { entities -> entities.map { it.toModel() } }
 }

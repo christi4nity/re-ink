@@ -41,6 +41,9 @@ interface ReadLaterDao {
     @Query("UPDATE read_later SET isArchived = 0, archivedAt = NULL WHERE id = :id")
     suspend fun unarchiveById(id: Long)
 
+    @Query("SELECT * FROM read_later WHERE isArchived = 0 AND isRead = 0 ORDER BY savedAt DESC")
+    fun getUnread(): Flow<List<ReadLaterEntity>>
+
     @Query("SELECT * FROM read_later WHERE isArchived = 1 ORDER BY archivedAt DESC")
     fun getArchived(): Flow<List<ReadLaterEntity>>
 }

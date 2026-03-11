@@ -6,6 +6,7 @@ import com.reink.data.model.ReadLaterItem
 import com.reink.data.remote.CloudQueueClient
 import com.reink.data.repository.PreferencesRepository
 import com.reink.data.repository.ReadLaterRepository
+import com.reink.ui.home.groupByDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,10 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 data class ReadLaterSection(
@@ -43,7 +40,12 @@ class ReadLaterViewModel @Inject constructor(
             readLaterRepository.observeAll(),
             isSyncing,
         ) { items, syncing ->
-            ReadLaterUiState(sections = groupByDate(items), isSyncing = syncing)
+            ReadLaterUiState(
+                sections = groupByDate(items) { it.savedAt }.map {
+                    ReadLaterSection(dateHeader = it.dateHeader, items = it.items)
+                },
+                isSyncing = syncing,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -93,42 +95,4 @@ class ReadLaterViewModel @Inject constructor(
         }
     }
 
-    companion object {
-        private val dayWithDateFormat = SimpleDateFormat("EEEE, MMM d", Locale.US)
-        private val dateFormat = SimpleDateFormat("MMM d", Locale.US)
-
-        fun groupByDate(items: List<ReadLaterItem>): List<ReadLaterSection> {
-            if (items.isEmpty()) return emptyList()
-
-            val calendar = Calendar.getInstance()
-            val today = clearTime(calendar)
-            calendar.add(Calendar.DAY_OF_YEAR, -1)
-            val yesterday = calendar.timeInMillis
-
-            return items.groupBy { item ->
-                val itemCal = Calendar.getInstance().apply { timeInMillis = item.savedAt }
-                val itemDay = clearTime(itemCal)
-
-                when {
-                    itemDay >= today ->
-                        "Today, ${dateFormat.format(Date(item.savedAt))}"
-                    itemDay >= yesterday ->
-                        "Yesterday, ${dateFormat.format(Date(item.savedAt))}"
-                    itemDay >= today - 6 * 24 * 60 * 60 * 1000L ->
-                        dayWithDateFormat.format(Date(item.savedAt))
-                    else -> dateFormat.format(Date(item.savedAt))
-                }
-            }.map { (header, sectionItems) ->
-                ReadLaterSection(dateHeader = header, items = sectionItems)
-            }
-        }
-
-        private fun clearTime(cal: Calendar): Long {
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            return cal.timeInMillis
-        }
-    }
 }

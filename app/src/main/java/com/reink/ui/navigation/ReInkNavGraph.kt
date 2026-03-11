@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.reink.VolumeKey
 import com.reink.ui.feed.FeedScreen
+import com.reink.ui.home.HomeScreen
 import com.reink.ui.reader.ReaderScreen
 import com.reink.ui.readlater.ReadLaterScreen
 import com.reink.ui.archive.ArchiveScreen
@@ -30,7 +31,7 @@ import com.reink.ui.settings.SettingsScreen
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
-private val bottomNavScreens = listOf(Screen.Feed, Screen.ReadLater, Screen.Settings)
+private val bottomNavScreens = listOf(Screen.Home, Screen.Feed, Screen.ReadLater, Screen.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,9 +91,19 @@ fun ReInkNavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Feed.route,
+            startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding),
         ) {
+            composable(Screen.Home.route) {
+                HomeScreen(
+                    onArticleClick = { articleId ->
+                        navController.navigate(Screen.Reader.createRoute("article", articleId))
+                    },
+                    onReadLaterClick = { readLaterId ->
+                        navController.navigate(Screen.Reader.createRoute("readlater", readLaterId))
+                    },
+                )
+            }
             composable(Screen.Feed.route) {
                 FeedScreen(
                     onArticleClick = { articleId ->

@@ -8,6 +8,7 @@ import com.reink.data.model.Feed
 import com.reink.data.repository.ArticleRepository
 import com.reink.data.repository.EmailSyncRepository
 import com.reink.data.repository.FeedRepository
+import com.reink.ui.home.groupByDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 data class ArticleSection(
@@ -74,7 +71,9 @@ class FeedViewModel @Inject constructor(
         error,
     ) { articles, feeds, filter, syncing, err ->
         FeedUiState(
-            sections = groupByDate(articles),
+            sections = groupByDate(articles) { it.publishedAt }.map {
+                ArticleSection(dateHeader = it.dateHeader, articles = it.items)
+            },
             feeds = feeds,
             feedTitles = feeds.associate { it.id to it.title },
             selectedFeedId = filter.feedId,
@@ -140,40 +139,4 @@ class FeedViewModel @Inject constructor(
         error.value = null
     }
 
-    companion object {
-        private val dayWithDateFormat = SimpleDateFormat("EEEE, MMM d", Locale.US)
-        private val dateFormat = SimpleDateFormat("MMM d", Locale.US)
-
-        fun groupByDate(articles: List<Article>): List<ArticleSection> {
-            if (articles.isEmpty()) return emptyList()
-
-            val calendar = Calendar.getInstance()
-            val today = clearTime(calendar)
-            calendar.add(Calendar.DAY_OF_YEAR, -1)
-            val yesterday = calendar.timeInMillis
-
-            return articles.groupBy { article ->
-                val articleCal = Calendar.getInstance().apply { timeInMillis = article.publishedAt }
-                val articleDay = clearTime(articleCal)
-
-                when {
-                    articleDay >= today ->
-                        "Today, ${dateFormat.format(Date(article.publishedAt))}"
-                    articleDay >= yesterday ->
-                        "Yesterday, ${dateFormat.format(Date(article.publishedAt))}"
-                    articleDay >= today - 6 * 24 * 60 * 60 * 1000L ->
-                        dayWithDateFormat.format(Date(article.publishedAt))
-                    else -> dateFormat.format(Date(article.publishedAt))
-                }
-            }.map { (header, items) -> ArticleSection(dateHeader = header, articles = items) }
-        }
-
-        private fun clearTime(cal: Calendar): Long {
-            cal.set(Calendar.HOUR_OF_DAY, 0)
-            cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0)
-            cal.set(Calendar.MILLISECOND, 0)
-            return cal.timeInMillis
-        }
-    }
 }
