@@ -39,6 +39,7 @@ object AppModule {
                 ReInkDatabase.MIGRATION_5_6,
                 ReInkDatabase.MIGRATION_6_7,
                 ReInkDatabase.MIGRATION_7_8,
+                ReInkDatabase.MIGRATION_8_9,
             )
             .build()
 

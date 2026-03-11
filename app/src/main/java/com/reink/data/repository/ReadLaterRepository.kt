@@ -90,4 +90,13 @@ class ReadLaterRepository @Inject constructor(
 
         return fetched
     }
+
+    suspend fun archive(id: Long) =
+        readLaterDao.archiveById(id)
+
+    suspend fun unarchive(id: Long) =
+        readLaterDao.unarchiveById(id)
+
+    fun observeArchived(): Flow<List<ReadLaterItem>> =
+        readLaterDao.getArchived().map { entities -> entities.map { it.toModel() } }
 }

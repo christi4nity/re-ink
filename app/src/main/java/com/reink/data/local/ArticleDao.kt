@@ -11,6 +11,7 @@ interface ArticleDao {
 
     @Query(
         """SELECT * FROM articles
+           WHERE isArchived = 0
            ORDER BY publishedAt DESC"""
     )
     fun getAll(): Flow<List<ArticleEntity>>
@@ -18,14 +19,14 @@ interface ArticleDao {
     @Query(
         """SELECT a.* FROM articles a
            INNER JOIN feeds f ON a.feedId = f.id
-           WHERE f.url NOT LIKE 'email://%'
+           WHERE f.url NOT LIKE 'email://%' AND a.isArchived = 0
            ORDER BY a.publishedAt DESC"""
     )
     fun getRssFeedArticles(): Flow<List<ArticleEntity>>
 
     @Query(
         """SELECT * FROM articles
-           WHERE feedId = :feedId
+           WHERE feedId = :feedId AND isArchived = 0
            ORDER BY publishedAt DESC"""
     )
     fun getByFeed(feedId: Long): Flow<List<ArticleEntity>>
@@ -33,21 +34,21 @@ interface ArticleDao {
     @Query(
         """SELECT a.* FROM articles a
            INNER JOIN feeds f ON a.feedId = f.id
-           WHERE f.url NOT LIKE 'email://%' AND a.isRead = 0
+           WHERE f.url NOT LIKE 'email://%' AND a.isRead = 0 AND a.isArchived = 0
            ORDER BY a.publishedAt DESC"""
     )
     fun getRssFeedUnread(): Flow<List<ArticleEntity>>
 
     @Query(
         """SELECT * FROM articles
-           WHERE isRead = 0
+           WHERE isRead = 0 AND isArchived = 0
            ORDER BY publishedAt DESC"""
     )
     fun getUnread(): Flow<List<ArticleEntity>>
 
     @Query(
         """SELECT * FROM articles
-           WHERE feedId = :feedId AND isRead = 0
+           WHERE feedId = :feedId AND isRead = 0 AND isArchived = 0
            ORDER BY publishedAt DESC"""
     )
     fun getUnreadByFeed(feedId: Long): Flow<List<ArticleEntity>>
@@ -73,7 +74,7 @@ interface ArticleDao {
     @Query("DELETE FROM articles WHERE feedId = :feedId")
     suspend fun deleteByFeed(feedId: Long)
 
-    @Query("DELETE FROM articles WHERE publishedAt < :cutoff")
+    @Query("DELETE FROM articles WHERE publishedAt < :cutoff AND isArchived = 0")
     suspend fun deleteOlderThan(cutoff: Long)
 
     @Query("SELECT COUNT(*) FROM articles WHERE feedId = :feedId")
@@ -93,4 +94,13 @@ interface ArticleDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM articles WHERE url = :url)")
     suspend fun existsByUrl(url: String): Boolean
+
+    @Query("UPDATE articles SET isArchived = 1, archivedAt = :now WHERE id = :id")
+    suspend fun archiveById(id: Long, now: Long = System.currentTimeMillis())
+
+    @Query("UPDATE articles SET isArchived = 0, archivedAt = NULL WHERE id = :id")
+    suspend fun unarchiveById(id: Long)
+
+    @Query("SELECT * FROM articles WHERE isArchived = 1 ORDER BY archivedAt DESC")
+    fun getArchived(): Flow<List<ArticleEntity>>
 }

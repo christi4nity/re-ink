@@ -26,6 +26,8 @@ data class ArticleEntity(
     val contentStatus: String = Article.CONTENT_FULL,
     val isRead: Boolean,
     val emailMessageId: String? = null,
+    val isArchived: Boolean = false,
+    val archivedAt: Long? = null,
 ) {
     fun toModel(): Article = Article(
         id = id,
@@ -39,6 +41,8 @@ data class ArticleEntity(
         contentStatus = contentStatus,
         isRead = isRead,
         emailMessageId = emailMessageId,
+        isArchived = isArchived,
+        archivedAt = archivedAt,
     )
 
     companion object {
@@ -54,6 +58,8 @@ data class ArticleEntity(
             contentStatus = article.contentStatus,
             isRead = article.isRead,
             emailMessageId = article.emailMessageId,
+            isArchived = article.isArchived,
+            archivedAt = article.archivedAt,
         )
     }
 }

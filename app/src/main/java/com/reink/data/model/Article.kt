@@ -12,6 +12,8 @@ data class Article(
     val contentStatus: String = CONTENT_FULL,
     val isRead: Boolean = false,
     val emailMessageId: String? = null,
+    val isArchived: Boolean = false,
+    val archivedAt: Long? = null,
 ) {
     companion object {
         const val CONTENT_FULL = "full"

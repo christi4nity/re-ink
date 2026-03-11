@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ReadLaterDao {
 
-    @Query("SELECT * FROM read_later ORDER BY savedAt DESC")
+    @Query("SELECT * FROM read_later WHERE isArchived = 0 ORDER BY savedAt DESC")
     fun getAll(): Flow<List<ReadLaterEntity>>
 
     @Query("SELECT * FROM read_later WHERE id = :id")
@@ -34,4 +34,13 @@ interface ReadLaterDao {
 
     @Query("UPDATE read_later SET fetchStatus = 'PENDING' WHERE fetchStatus = 'FAILED'")
     suspend fun resetFailed(): Int
+
+    @Query("UPDATE read_later SET isArchived = 1, archivedAt = :now WHERE id = :id")
+    suspend fun archiveById(id: Long, now: Long = System.currentTimeMillis())
+
+    @Query("UPDATE read_later SET isArchived = 0, archivedAt = NULL WHERE id = :id")
+    suspend fun unarchiveById(id: Long)
+
+    @Query("SELECT * FROM read_later WHERE isArchived = 1 ORDER BY archivedAt DESC")
+    fun getArchived(): Flow<List<ReadLaterEntity>>
 }

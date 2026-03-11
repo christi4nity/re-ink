@@ -141,4 +141,13 @@ class ArticleRepository @Inject constructor(
 
     suspend fun deleteOlderThan(cutoffMillis: Long) =
         articleDao.deleteOlderThan(cutoffMillis)
+
+    suspend fun archive(id: Long) =
+        articleDao.archiveById(id)
+
+    suspend fun unarchive(id: Long) =
+        articleDao.unarchiveById(id)
+
+    fun observeArchived(): Flow<List<Article>> =
+        articleDao.getArchived().map { entities -> entities.map { it.toModel() } }
 }

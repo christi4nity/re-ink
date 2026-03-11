@@ -11,4 +11,6 @@ data class ReadLaterItem(
     val isRead: Boolean = false,
     val sourceDomain: String? = null,
     val excerpt: String? = null,
+    val isArchived: Boolean = false,
+    val archivedAt: Long? = null,
 )

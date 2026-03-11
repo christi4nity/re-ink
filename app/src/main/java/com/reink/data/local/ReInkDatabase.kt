@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [FeedEntity::class, ArticleEntity::class, ReadLaterEntity::class],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class ReInkDatabase : RoomDatabase() {
@@ -68,6 +68,15 @@ abstract class ReInkDatabase : RoomDatabase() {
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE read_later ADD COLUMN excerpt TEXT DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE articles ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE articles ADD COLUMN archivedAt INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE read_later ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE read_later ADD COLUMN archivedAt INTEGER DEFAULT NULL")
             }
         }
     }
