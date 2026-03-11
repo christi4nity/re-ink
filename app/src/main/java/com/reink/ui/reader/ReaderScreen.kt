@@ -326,11 +326,19 @@ private fun ReadingPreferencesSheet(
         )
 
         LabeledSlider(
-            label = "Margins",
+            label = "Side margins",
             value = preferences.marginHorizontal.toFloat(),
             valueRange = 8f..192f,
             displayValue = "${preferences.marginHorizontal}dp",
             onValueChange = { onPreferencesChanged(preferences.copy(marginHorizontal = it.toInt())) },
+        )
+
+        LabeledSlider(
+            label = "Vertical margins",
+            value = preferences.marginVertical.toFloat(),
+            valueRange = 0f..96f,
+            displayValue = "${preferences.marginVertical}dp",
+            onValueChange = { onPreferencesChanged(preferences.copy(marginVertical = it.toInt())) },
         )
 
         AlignmentPicker(

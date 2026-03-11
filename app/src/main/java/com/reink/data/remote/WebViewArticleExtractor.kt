@@ -158,7 +158,8 @@ class WebViewArticleExtractor @Inject constructor(
                             title = title,
                             contentHtml = content,
                             sourceDomain = siteName.ifBlank { domain },
-                            excerpt = excerpt.takeIf { it.isNotBlank() },
+                            excerpt = excerpt.takeIf { it.isNotBlank() }
+                                ?.let { ArticleExtractor.stripHtml(it) },
                         ),
                     )
                 }

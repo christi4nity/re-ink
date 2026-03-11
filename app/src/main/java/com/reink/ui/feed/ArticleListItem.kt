@@ -86,18 +86,6 @@ fun ArticleListItem(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (article.isRead) {
-                        Text(
-                            text = "Read",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "\u00B7",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                     Text(
                         text = feedTitle,
                         style = MaterialTheme.typography.labelMedium,

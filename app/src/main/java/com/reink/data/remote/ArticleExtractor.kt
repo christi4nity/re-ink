@@ -142,8 +142,8 @@ class ArticleExtractor @Inject constructor(
                     title = title,
                     contentHtml = extractedContent,
                     sourceDomain = extractSiteName(html) ?: extractDomain(articleUrl),
-                    excerpt = article.excerpt?.trim()?.takeIf { it.isNotBlank() }
-                        ?: extractOgDescription(html),
+                    excerpt = (article.excerpt?.trim()?.takeIf { it.isNotBlank() }
+                        ?: extractOgDescription(html))?.let { stripHtml(it) },
                 )
             }
         } catch (_: Exception) {
@@ -169,6 +169,9 @@ class ArticleExtractor @Inject constructor(
         private const val ARCHIVE_ORG_PREFIX =
             "https://web.archive.org/web/"
         private val STRIP_TAGS_REGEX = Regex("<[^>]+>")
+
+        fun stripHtml(text: String): String =
+            STRIP_TAGS_REGEX.replace(text, "").trim()
 
         private val interstitialMarkers = listOf(
             "__cf_chl_",

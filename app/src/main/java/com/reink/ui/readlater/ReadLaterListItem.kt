@@ -90,20 +90,6 @@ fun ReadLaterListItem(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (item.isRead) {
-                        Text(
-                            text = "Read",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (!item.sourceDomain.isNullOrBlank()) {
-                            Text(
-                                text = "\u00B7",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
                     when (item.fetchStatus) {
                         FetchStatus.PENDING, FetchStatus.FETCHING -> {
                             Text(
