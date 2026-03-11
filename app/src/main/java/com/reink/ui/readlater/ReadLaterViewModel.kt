@@ -81,6 +81,12 @@ class ReadLaterViewModel @Inject constructor(
             }
     }
 
+    fun archive(id: Long) {
+        viewModelScope.launch {
+            readLaterRepository.archive(id)
+        }
+    }
+
     fun remove(id: Long) {
         viewModelScope.launch {
             readLaterRepository.delete(id)

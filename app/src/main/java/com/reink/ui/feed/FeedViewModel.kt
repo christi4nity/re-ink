@@ -124,6 +124,12 @@ class FeedViewModel @Inject constructor(
         }
     }
 
+    fun archiveArticle(id: Long) {
+        viewModelScope.launch {
+            articleRepository.archive(id)
+        }
+    }
+
     fun deleteArticle(id: Long) {
         viewModelScope.launch {
             articleRepository.delete(id)

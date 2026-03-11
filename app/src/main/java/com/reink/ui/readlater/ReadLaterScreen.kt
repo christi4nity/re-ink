@@ -79,6 +79,7 @@ fun ReadLaterScreen(
                             ReadLaterListItem(
                                 item = item,
                                 onClick = { onItemClick(item.id) },
+                                onArchive = { viewModel.archive(item.id) },
                                 onRemove = { viewModel.remove(item.id) },
                             )
                         }

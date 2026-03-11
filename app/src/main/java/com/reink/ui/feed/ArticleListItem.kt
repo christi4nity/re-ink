@@ -38,10 +38,11 @@ fun ArticleListItem(
     article: Article,
     feedTitle: String,
     onClick: () -> Unit,
+    onArchive: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showDelete by remember { mutableStateOf(false) }
+    var showActions by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier
@@ -55,9 +56,9 @@ fun ArticleListItem(
             modifier = Modifier
                 .combinedClickable(
                     onClick = {
-                        if (showDelete) showDelete = false else onClick()
+                        if (showActions) showActions = false else onClick()
                     },
-                    onLongClick = { showDelete = !showDelete },
+                    onLongClick = { showActions = !showActions },
                 )
                 .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 16.dp),
         ) {
@@ -117,23 +118,39 @@ fun ArticleListItem(
                 }
             }
             AnimatedVisibility(
-                visible = showDelete,
+                visible = showActions,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                IconButton(
-                    onClick = {
-                        showDelete = false
-                        onDelete()
-                    },
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_delete),
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp),
-                    )
+                Row {
+                    IconButton(
+                        onClick = {
+                            showActions = false
+                            onArchive()
+                        },
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_archive),
+                            contentDescription = "Archive",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            showActions = false
+                            onDelete()
+                        },
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_delete),
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
         }

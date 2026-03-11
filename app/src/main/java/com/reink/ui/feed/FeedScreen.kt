@@ -126,6 +126,7 @@ fun FeedScreen(
                                     article = article,
                                     feedTitle = state.feedTitles[article.feedId] ?: "",
                                     onClick = { onArticleClick(article.id) },
+                                    onArchive = { viewModel.archiveArticle(article.id) },
                                     onDelete = { viewModel.deleteArticle(article.id) },
                                 )
                             }

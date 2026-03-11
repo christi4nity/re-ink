@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reink.R
+import androidx.core.text.HtmlCompat
 import com.reink.data.model.FetchStatus
 import com.reink.data.model.ReadLaterItem
 
@@ -37,10 +38,11 @@ import com.reink.data.model.ReadLaterItem
 fun ReadLaterListItem(
     item: ReadLaterItem,
     onClick: () -> Unit,
+    onArchive: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showDelete by remember { mutableStateOf(false) }
+    var showActions by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier
@@ -53,11 +55,14 @@ fun ReadLaterListItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .combinedClickable(
-                    enabled = item.fetchStatus == FetchStatus.FETCHED,
                     onClick = {
-                        if (showDelete) showDelete = false else onClick()
+                        if (showActions) {
+                            showActions = false
+                        } else if (item.fetchStatus == FetchStatus.FETCHED) {
+                            onClick()
+                        }
                     },
-                    onLongClick = { showDelete = !showDelete },
+                    onLongClick = { showActions = !showActions },
                 )
                 .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 16.dp),
         ) {
@@ -74,7 +79,7 @@ fun ReadLaterListItem(
                 )
                 if (!item.excerpt.isNullOrBlank()) {
                     Text(
-                        text = item.excerpt,
+                        text = HtmlCompat.fromHtml(item.excerpt, HtmlCompat.FROM_HTML_MODE_COMPACT).toString(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -140,23 +145,39 @@ fun ReadLaterListItem(
                 }
             }
             AnimatedVisibility(
-                visible = showDelete,
+                visible = showActions,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
-                IconButton(
-                    onClick = {
-                        showDelete = false
-                        onRemove()
-                    },
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_delete),
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp),
-                    )
+                Row {
+                    IconButton(
+                        onClick = {
+                            showActions = false
+                            onArchive()
+                        },
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_archive),
+                            contentDescription = "Archive",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            showActions = false
+                            onRemove()
+                        },
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_delete),
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
         }
