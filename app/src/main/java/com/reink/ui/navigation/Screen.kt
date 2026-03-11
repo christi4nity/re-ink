@@ -9,4 +9,5 @@ sealed class Screen(val route: String, val label: String) {
             "reader/$itemType/$itemId"
     }
     data object SubstackSignIn : Screen("substack_sign_in", "Sign In")
+    data object Archive : Screen("archive", "Archive")
 }

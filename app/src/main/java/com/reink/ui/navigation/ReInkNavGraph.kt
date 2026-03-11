@@ -25,6 +25,7 @@ import com.reink.VolumeKey
 import com.reink.ui.feed.FeedScreen
 import com.reink.ui.reader.ReaderScreen
 import com.reink.ui.readlater.ReadLaterScreen
+import com.reink.ui.archive.ArchiveScreen
 import com.reink.ui.settings.SettingsScreen
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -107,7 +108,16 @@ fun ReInkNavGraph(
                 )
             }
             composable(Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateToArchive = {
+                        navController.navigate(Screen.Archive.route)
+                    },
+                )
+            }
+            composable(Screen.Archive.route) {
+                ArchiveScreen(
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(
                 route = Screen.Reader.route,
