@@ -6,14 +6,31 @@ Built for the Boox NoteAir5C. A personal project for an audience of one, publish
 
 ## Features
 
-- RSS feed ingestion for Substack publications
+**Content Sources**
+- RSS feed ingestion for Substack publications (including section-level filtering)
 - Email-based article ingestion (IMAP) for paid content that RSS can't deliver
-- Clean WebView reader with customizable typography (font, size, line height, margins, alignment)
+- Cloud queue for saving articles from any device (share URL + QR code)
+
+**Reader**
+- Clean WebView reader with customizable typography (font family, size, line height, margins, alignment)
 - Paginated and scroll reading modes
-- Read-later queue with Readability.js extraction for linked articles
-- E-ink optimized UI: grayscale, no animations, bold typography
-- Background sync via WorkManager (4-hour periodic, wifi-only)
 - Volume key navigation in paginated mode
+- Reading progress bar
+
+**Organization**
+- Home tab: unified unread feed across all sources
+- Feed tab: per-feed browsing with unread filtering
+- Read-later queue with Readability4J extraction (WebView fallback for JS-heavy sites)
+- Archive for finished articles
+- Long-press actions: archive, delete, unarchive
+
+**Sync**
+- Background sync via WorkManager (4-hour periodic, wifi-only)
+- Cross-device sync for read/archive state, feeds, and reading preferences
+- Substack browser sign-in (WebView) with manual SID fallback
+
+**UI**
+- E-ink optimized: grayscale, no animations, bold typography, no ripple effects
 
 ## Build
 
