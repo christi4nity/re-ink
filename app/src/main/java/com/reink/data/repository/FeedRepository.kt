@@ -30,8 +30,8 @@ class FeedRepository @Inject constructor(
         feedDao.insert(FeedEntity.fromModel(feed))
 
     suspend fun delete(id: Long) {
+        feedDao.softDeleteById(id)
         articleDao.deleteByFeed(id)
-        feedDao.deleteById(id)
     }
 
     /**

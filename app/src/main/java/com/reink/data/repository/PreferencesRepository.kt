@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.ReadingPreferences
+import com.reink.data.model.SyncConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -34,6 +35,12 @@ class PreferencesRepository @Inject constructor(
         private val KEY_CLOUD_QUEUE_ENABLED = booleanPreferencesKey("cloud_queue_enabled")
         private val KEY_CLOUD_QUEUE_ID = stringPreferencesKey("cloud_queue_id")
         private val KEY_CLOUD_QUEUE_BASE_URL = stringPreferencesKey("cloud_queue_base_url")
+        private val KEY_SYNC_ENABLED = booleanPreferencesKey("sync_enabled")
+        private val KEY_SYNC_SERVER_URL = stringPreferencesKey("sync_server_url")
+        private val KEY_SYNC_API_KEY = stringPreferencesKey("sync_api_key")
+        private val KEY_SYNC_DEVICE_ID = stringPreferencesKey("sync_device_id")
+        private val KEY_SYNC_LAST_SYNCED_AT = longPreferencesKey("sync_last_synced_at")
+        private val KEY_PREFS_MODIFIED_AT = longPreferencesKey("prefs_modified_at")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -58,6 +65,7 @@ class PreferencesRepository @Inject constructor(
             store[KEY_MARGIN_VERTICAL] = prefs.marginVertical
             store[KEY_TEXT_ALIGN] = prefs.textAlign
             store[KEY_PAGINATION_MODE] = prefs.paginationMode
+            store[KEY_PREFS_MODIFIED_AT] = System.currentTimeMillis()
         }
     }
 
@@ -117,5 +125,71 @@ class PreferencesRepository @Inject constructor(
             store.remove(KEY_CLOUD_QUEUE_ID)
             store.remove(KEY_CLOUD_QUEUE_BASE_URL)
         }
+    }
+
+    fun observeSyncConfig(): Flow<SyncConfig> =
+        dataStore.data.map { prefs ->
+            SyncConfig(
+                enabled = prefs[KEY_SYNC_ENABLED] ?: false,
+                serverUrl = prefs[KEY_SYNC_SERVER_URL] ?: "",
+                apiKey = prefs[KEY_SYNC_API_KEY] ?: "",
+                deviceId = prefs[KEY_SYNC_DEVICE_ID] ?: "",
+            )
+        }
+
+    suspend fun getSyncConfig(): SyncConfig {
+        val prefs = dataStore.data.first()
+        return SyncConfig(
+            enabled = prefs[KEY_SYNC_ENABLED] ?: false,
+            serverUrl = prefs[KEY_SYNC_SERVER_URL] ?: "",
+            apiKey = prefs[KEY_SYNC_API_KEY] ?: "",
+            deviceId = prefs[KEY_SYNC_DEVICE_ID] ?: "",
+        )
+    }
+
+    suspend fun setSyncConfig(config: SyncConfig) {
+        dataStore.edit { store ->
+            store[KEY_SYNC_ENABLED] = config.enabled
+            store[KEY_SYNC_SERVER_URL] = config.serverUrl
+            store[KEY_SYNC_API_KEY] = config.apiKey
+            store[KEY_SYNC_DEVICE_ID] = config.deviceId
+        }
+    }
+
+    suspend fun clearSyncConfig() {
+        dataStore.edit { store ->
+            store[KEY_SYNC_ENABLED] = false
+            store.remove(KEY_SYNC_SERVER_URL)
+            store.remove(KEY_SYNC_API_KEY)
+            store.remove(KEY_SYNC_DEVICE_ID)
+            store.remove(KEY_SYNC_LAST_SYNCED_AT)
+        }
+    }
+
+    suspend fun getSyncLastSyncedAt(): Long =
+        dataStore.data.first()[KEY_SYNC_LAST_SYNCED_AT] ?: 0L
+
+    suspend fun setSyncLastSyncedAt(timestamp: Long) {
+        dataStore.edit { store -> store[KEY_SYNC_LAST_SYNCED_AT] = timestamp }
+    }
+
+    suspend fun getReadingPreferences(): ReadingPreferences {
+        val prefs = dataStore.data.first()
+        return ReadingPreferences(
+            fontFamily = prefs[KEY_FONT_FAMILY] ?: ReadingPreferences().fontFamily,
+            fontSize = prefs[KEY_FONT_SIZE] ?: ReadingPreferences().fontSize,
+            lineHeight = prefs[KEY_LINE_HEIGHT] ?: ReadingPreferences().lineHeight,
+            marginHorizontal = prefs[KEY_MARGIN_HORIZONTAL] ?: ReadingPreferences().marginHorizontal,
+            marginVertical = prefs[KEY_MARGIN_VERTICAL] ?: ReadingPreferences().marginVertical,
+            textAlign = prefs[KEY_TEXT_ALIGN] ?: ReadingPreferences().textAlign,
+            paginationMode = prefs[KEY_PAGINATION_MODE] ?: ReadingPreferences().paginationMode,
+        )
+    }
+
+    suspend fun getPreferencesModifiedAt(): Long =
+        dataStore.data.first()[KEY_PREFS_MODIFIED_AT] ?: 0L
+
+    suspend fun setPreferencesModifiedAt(timestamp: Long) {
+        dataStore.edit { store -> store[KEY_PREFS_MODIFIED_AT] = timestamp }
     }
 }

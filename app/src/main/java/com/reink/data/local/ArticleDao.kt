@@ -59,14 +59,14 @@ interface ArticleDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAllNew(articles: List<ArticleEntity>)
 
-    @Query("UPDATE articles SET isRead = 1 WHERE id = :id")
-    suspend fun markRead(id: Long)
+    @Query("UPDATE articles SET isRead = 1, modifiedAt = :now WHERE id = :id")
+    suspend fun markRead(id: Long, now: Long = System.currentTimeMillis())
 
-    @Query("UPDATE articles SET isRead = 1 WHERE feedId = :feedId AND publishedAt < :cutoff")
-    suspend fun markReadBefore(feedId: Long, cutoff: Long)
+    @Query("UPDATE articles SET isRead = 1, modifiedAt = :now WHERE feedId = :feedId AND publishedAt < :cutoff")
+    suspend fun markReadBefore(feedId: Long, cutoff: Long, now: Long = System.currentTimeMillis())
 
-    @Query("UPDATE articles SET isRead = 1 WHERE publishedAt < :cutoff")
-    suspend fun markAllReadBefore(cutoff: Long)
+    @Query("UPDATE articles SET isRead = 1, modifiedAt = :now WHERE publishedAt < :cutoff")
+    suspend fun markAllReadBefore(cutoff: Long, now: Long = System.currentTimeMillis())
 
     @Query("DELETE FROM articles WHERE id = :id")
     suspend fun deleteById(id: Long)
@@ -95,12 +95,21 @@ interface ArticleDao {
     @Query("SELECT EXISTS(SELECT 1 FROM articles WHERE url = :url)")
     suspend fun existsByUrl(url: String): Boolean
 
-    @Query("UPDATE articles SET isArchived = 1, archivedAt = :now WHERE id = :id")
+    @Query("UPDATE articles SET isArchived = 1, archivedAt = :now, modifiedAt = :now WHERE id = :id")
     suspend fun archiveById(id: Long, now: Long = System.currentTimeMillis())
 
-    @Query("UPDATE articles SET isArchived = 0, archivedAt = NULL WHERE id = :id")
-    suspend fun unarchiveById(id: Long)
+    @Query("UPDATE articles SET isArchived = 0, archivedAt = NULL, modifiedAt = :now WHERE id = :id")
+    suspend fun unarchiveById(id: Long, now: Long = System.currentTimeMillis())
 
     @Query("SELECT * FROM articles WHERE isArchived = 1 ORDER BY archivedAt DESC")
     fun getArchived(): Flow<List<ArticleEntity>>
+
+    @Query("SELECT * FROM articles WHERE modifiedAt > :since")
+    suspend fun getModifiedSince(since: Long): List<ArticleEntity>
+
+    @Query("SELECT * FROM articles WHERE url = :url LIMIT 1")
+    suspend fun getByUrl(url: String): ArticleEntity?
+
+    @Query("UPDATE articles SET isRead = :isRead, isArchived = :isArchived, archivedAt = :archivedAt, modifiedAt = :modifiedAt WHERE url = :url")
+    suspend fun updateStateByUrl(url: String, isRead: Boolean, isArchived: Boolean, archivedAt: Long?, modifiedAt: Long)
 }

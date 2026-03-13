@@ -22,3 +22,6 @@ local.properties
 
 # Internal docs (plans, handoffs)
 docs/
+
+# Sync server binary
+sync-server/reink-sync

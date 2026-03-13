@@ -8,10 +8,13 @@ import com.reink.data.email.EmailCredentialsStore
 import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.Feed
 import com.reink.data.model.ReadingPreferences
+import com.reink.data.model.SyncConfig
 import com.reink.data.remote.CloudQueueClient
+import com.reink.data.remote.SyncClient
 import com.reink.data.repository.EmailSyncRepository
 import com.reink.data.repository.FeedRepository
 import com.reink.data.repository.PreferencesRepository
+import com.reink.data.repository.SyncRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +38,11 @@ data class SettingsUiState(
     val cloudQueueConfig: CloudQueueConfig = CloudQueueConfig(),
     val cloudQueueSetupInProgress: Boolean = false,
     val cloudQueueStatus: String? = null,
+    val syncConfig: SyncConfig = SyncConfig(),
+    val syncConnectInProgress: Boolean = false,
+    val syncInProgress: Boolean = false,
+    val syncStatus: String? = null,
+    val syncLastSyncTime: String? = null,
 )
 
 private data class EmailState(
@@ -53,6 +61,8 @@ class SettingsViewModel @Inject constructor(
     private val emailContentSource: EmailContentSource,
     private val emailSyncRepository: EmailSyncRepository,
     private val cloudQueueClient: CloudQueueClient,
+    private val syncClient: SyncClient,
+    private val syncRepository: SyncRepository,
 ) : ViewModel() {
 
     private val showAddFeedDialog = MutableStateFlow(false)
@@ -63,9 +73,19 @@ class SettingsViewModel @Inject constructor(
     private val emailConfigured = MutableStateFlow(false)
     private val cloudQueueSetupInProgress = MutableStateFlow(false)
     private val cloudQueueStatus = MutableStateFlow<String?>(null)
+    private val syncConnectInProgress = MutableStateFlow(false)
+    private val syncInProgress = MutableStateFlow(false)
+    private val syncStatus = MutableStateFlow<String?>(null)
+    private val syncLastSyncTime = MutableStateFlow<String?>(null)
 
     init {
         emailConfigured.value = emailCredentialsStore.isConfigured()
+        viewModelScope.launch {
+            val lastSync = preferencesRepository.getSyncLastSyncedAt()
+            if (lastSync > 0) {
+                syncLastSyncTime.value = formatSyncTime(lastSync)
+            }
+        }
     }
 
     private val emailState = combine(
@@ -92,12 +112,31 @@ class SettingsViewModel @Inject constructor(
         CloudQueueState(config, setting, status)
     }
 
+    private data class DeviceSyncState(
+        val config: SyncConfig = SyncConfig(),
+        val connectInProgress: Boolean = false,
+        val inProgress: Boolean = false,
+        val status: String? = null,
+        val lastSyncTime: String? = null,
+    )
+
+    private val deviceSyncState = combine(
+        preferencesRepository.observeSyncConfig(),
+        syncConnectInProgress,
+        syncInProgress,
+        syncStatus,
+        syncLastSyncTime,
+    ) { config, connecting, syncing, status, lastSync ->
+        DeviceSyncState(config, connecting, syncing, status, lastSync)
+    }
+
     val uiState: StateFlow<SettingsUiState> = combine(
         feedRepository.observeRssFeeds(),
         preferencesRepository.observeReadingPreferences(),
         showAddFeedDialog,
         emailState,
         cloudQueueState,
+        deviceSyncState,
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val feeds = flows[0] as List<Feed>
@@ -105,6 +144,7 @@ class SettingsViewModel @Inject constructor(
         val showDialog = flows[2] as Boolean
         val email = flows[3] as EmailState
         val cloud = flows[4] as CloudQueueState
+        val sync = flows[5] as DeviceSyncState
         val creds = emailCredentialsStore.get()
         SettingsUiState(
             feeds = feeds,
@@ -120,6 +160,11 @@ class SettingsViewModel @Inject constructor(
             cloudQueueConfig = cloud.config,
             cloudQueueSetupInProgress = cloud.setupInProgress,
             cloudQueueStatus = cloud.status,
+            syncConfig = sync.config,
+            syncConnectInProgress = sync.connectInProgress,
+            syncInProgress = sync.inProgress,
+            syncStatus = sync.status,
+            syncLastSyncTime = sync.lastSyncTime,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -243,5 +288,65 @@ class SettingsViewModel @Inject constructor(
             preferencesRepository.clearCloudQueue()
             cloudQueueStatus.value = null
         }
+    }
+
+    fun connectSync(serverUrl: String, apiKey: String) {
+        viewModelScope.launch {
+            syncConnectInProgress.value = true
+            syncStatus.value = null
+            syncClient.healthCheck(serverUrl).fold(
+                onSuccess = {
+                    val deviceId = java.util.UUID.randomUUID().toString().take(8)
+                    preferencesRepository.setSyncConfig(
+                        SyncConfig(
+                            enabled = true,
+                            serverUrl = serverUrl,
+                            apiKey = apiKey,
+                            deviceId = deviceId,
+                        ),
+                    )
+                    syncStatus.value = "Connected"
+                },
+                onFailure = {
+                    syncStatus.value = "Connection failed: ${it.message}"
+                },
+            )
+            syncConnectInProgress.value = false
+        }
+    }
+
+    fun disconnectSync() {
+        viewModelScope.launch {
+            preferencesRepository.clearSyncConfig()
+            syncStatus.value = null
+            syncLastSyncTime.value = null
+        }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch {
+            syncInProgress.value = true
+            syncStatus.value = null
+            syncRepository.sync().fold(
+                onSuccess = { response ->
+                    val total = response.feeds.size + response.articles.size + response.readLater.size
+                    syncStatus.value = if (total > 0) {
+                        "Synced $total changes"
+                    } else {
+                        "Up to date"
+                    }
+                    syncLastSyncTime.value = formatSyncTime(response.syncedAt)
+                },
+                onFailure = {
+                    syncStatus.value = "Sync failed: ${it.message}"
+                },
+            )
+            syncInProgress.value = false
+        }
+    }
+
+    private fun formatSyncTime(timestamp: Long): String {
+        val formatter = java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+        return formatter.format(java.util.Date(timestamp))
     }
 }

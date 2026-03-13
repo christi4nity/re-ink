@@ -6,6 +6,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.work.WorkManager
 import com.reink.data.local.ArticleDao
 import com.reink.data.local.FeedDao
@@ -40,7 +42,19 @@ object AppModule {
                 ReInkDatabase.MIGRATION_6_7,
                 ReInkDatabase.MIGRATION_7_8,
                 ReInkDatabase.MIGRATION_8_9,
+                ReInkDatabase.MIGRATION_9_10,
             )
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    // One-time backfill for devices that already ran migration 9→10
+                    // before it included the backfill. Sets modifiedAt on stateful rows
+                    // so the first sync picks them up. No-op if already backfilled.
+                    val now = System.currentTimeMillis()
+                    db.execSQL("UPDATE feeds SET modifiedAt = $now WHERE modifiedAt = 0")
+                    db.execSQL("UPDATE articles SET modifiedAt = $now WHERE modifiedAt = 0 AND (isRead = 1 OR isArchived = 1)")
+                    db.execSQL("UPDATE read_later SET modifiedAt = $now WHERE modifiedAt = 0 AND (isRead = 1 OR isArchived = 1)")
+                }
+            })
             .build()
 
     @Provides

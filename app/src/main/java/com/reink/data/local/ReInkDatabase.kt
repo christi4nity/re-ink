@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [FeedEntity::class, ArticleEntity::class, ReadLaterEntity::class],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class ReInkDatabase : RoomDatabase() {
@@ -77,6 +77,20 @@ abstract class ReInkDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE articles ADD COLUMN archivedAt INTEGER DEFAULT NULL")
                 db.execSQL("ALTER TABLE read_later ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE read_later ADD COLUMN archivedAt INTEGER DEFAULT NULL")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val now = System.currentTimeMillis()
+                db.execSQL("ALTER TABLE feeds ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE feeds ADD COLUMN modifiedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE articles ADD COLUMN modifiedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE read_later ADD COLUMN modifiedAt INTEGER NOT NULL DEFAULT 0")
+                // Backfill: mark existing stateful rows so first sync picks them up
+                db.execSQL("UPDATE feeds SET modifiedAt = $now")
+                db.execSQL("UPDATE articles SET modifiedAt = $now WHERE isRead = 1 OR isArchived = 1")
+                db.execSQL("UPDATE read_later SET modifiedAt = $now WHERE isRead = 1 OR isArchived = 1")
             }
         }
     }

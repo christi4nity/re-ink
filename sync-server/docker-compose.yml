@@ -1,0 +1,14 @@
+services:
+  reink-sync:
+    build: .
+    container_name: reink-sync
+    restart: unless-stopped
+    ports:
+      - "8073:8073"
+    volumes:
+      - sync-data:/data
+    environment:
+      - REINK_SYNC_API_KEY=${REINK_SYNC_API_KEY}
+
+volumes:
+  sync-data:

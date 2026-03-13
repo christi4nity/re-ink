@@ -67,6 +67,19 @@ fun SettingsScreen(
             }
 
             item {
+                DeviceSyncSection(
+                    config = state.syncConfig,
+                    connectInProgress = state.syncConnectInProgress,
+                    syncInProgress = state.syncInProgress,
+                    status = state.syncStatus,
+                    lastSyncTime = state.syncLastSyncTime,
+                    onConnect = { url, key -> viewModel.connectSync(url, key) },
+                    onDisconnect = { viewModel.disconnectSync() },
+                    onSyncNow = { viewModel.syncNow() },
+                )
+            }
+
+            item {
                 CrossDeviceSharingSection(
                     config = state.cloudQueueConfig,
                     setupInProgress = state.cloudQueueSetupInProgress,

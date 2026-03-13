@@ -28,6 +28,7 @@ data class ArticleEntity(
     val emailMessageId: String? = null,
     val isArchived: Boolean = false,
     val archivedAt: Long? = null,
+    val modifiedAt: Long = 0,
 ) {
     fun toModel(): Article = Article(
         id = id,

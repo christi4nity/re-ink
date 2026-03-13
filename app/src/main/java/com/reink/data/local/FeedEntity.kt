@@ -17,6 +17,8 @@ data class FeedEntity(
     val substackSubdomain: String? = null,
     val enabledSectionSlugs: String? = null,
     val emailSenderPattern: String? = null,
+    val isDeleted: Boolean = false,
+    val modifiedAt: Long = 0,
 ) {
     fun toModel(): Feed = Feed(
         id = id,
