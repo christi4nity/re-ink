@@ -19,7 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class ImapEmailContentSource @Inject constructor(
     private val credentialsStore: EmailCredentialsStore,
-    private val parser: SubstackEmailParser,
+    private val parserChain: EmailParserChain,
 ) : EmailContentSource {
 
     override suspend fun fetchNewArticles(sinceTimestamp: Long): Result<List<EmailArticle>> =
@@ -46,11 +46,13 @@ class ImapEmailContentSource @Inject constructor(
                 }
                 folder.fetch(messages, fetchProfile)
 
+                parserChain.refreshParsers()
+
                 var parsed = 0
                 var failed = 0
                 val articles = messages.mapNotNull { message ->
                     try {
-                        val result = parser.parse(message)
+                        val result = parserChain.parse(message)
                         if (result != null) parsed++ else failed++
                         result
                     } catch (_: Exception) {
@@ -91,10 +93,12 @@ class ImapEmailContentSource @Inject constructor(
             }
             folder.fetch(messages, fetchProfile)
 
+            parserChain.refreshParsers()
+
             // Process newest first so fresh articles appear immediately
             for (message in messages.reversed()) {
                 try {
-                    val result = parser.parse(message)
+                    val result = parserChain.parse(message)
                     if (result != null) {
                         emit(result)
                     }

@@ -2,10 +2,13 @@ package com.reink.di
 
 import com.reink.data.email.EmailContentSource
 import com.reink.data.email.EmailCredentialsStore
+import com.reink.data.email.EmailParserChain
 import com.reink.data.email.EncryptedEmailCredentialsStore
 import com.reink.data.email.ImapEmailContentSource
+import com.reink.data.email.SubstackEmailParser
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -25,4 +28,14 @@ abstract class EmailModule {
     abstract fun bindEmailContentSource(
         impl: ImapEmailContentSource,
     ): EmailContentSource
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideEmailParserChain(
+            substackParser: SubstackEmailParser,
+        ): EmailParserChain = EmailParserChain(
+            listOf(substackParser)
+        )
+    }
 }
