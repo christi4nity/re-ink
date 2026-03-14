@@ -18,35 +18,55 @@ class ApkInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
     @PlainHttpClient private val httpClient: OkHttpClient,
 ) {
-    suspend fun downloadAndInstall(downloadUrl: String): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            val updatesDir = File(context.getExternalFilesDir(null), "updates").apply { mkdirs() }
-            val apkFile = File(updatesDir, "reink-update.apk")
+    private val updatesDir: File
+        get() = File(context.getExternalFilesDir(null), "updates").apply { mkdirs() }
 
+    private val apkFile: File
+        get() = File(updatesDir, "reink-update.apk")
+
+    val isDownloaded: Boolean
+        get() = apkFile.exists() && apkFile.length() > 0
+
+    suspend fun download(downloadUrl: String): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
             val request = Request.Builder().url(downloadUrl).build()
             val response = httpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 throw RuntimeException("Download failed: ${response.code}")
             }
 
+            val tempFile = File(updatesDir, "reink-update.apk.tmp")
             response.body?.byteStream()?.use { input ->
-                apkFile.outputStream().use { output ->
+                tempFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             } ?: throw RuntimeException("Empty response body")
 
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                apkFile,
-            )
-
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(installIntent)
+            tempFile.renameTo(apkFile)
+            apkFile
         }
+    }
+
+    fun install() {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apkFile,
+        )
+
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(installIntent)
+    }
+
+    suspend fun downloadAndInstall(downloadUrl: String): Result<Unit> = withContext(Dispatchers.IO) {
+        download(downloadUrl).map { install() }
+    }
+
+    fun cleanupDownload() {
+        apkFile.delete()
     }
 }

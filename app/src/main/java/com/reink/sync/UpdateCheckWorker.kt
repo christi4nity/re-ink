@@ -6,6 +6,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.reink.data.remote.UpdateChecker
 import com.reink.data.repository.PreferencesRepository
+import com.reink.update.ApkInstaller
+import com.reink.update.UpdateNotifier
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -15,6 +17,8 @@ class UpdateCheckWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val updateChecker: UpdateChecker,
     private val preferencesRepository: PreferencesRepository,
+    private val apkInstaller: ApkInstaller,
+    private val updateNotifier: UpdateNotifier,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -25,6 +29,15 @@ class UpdateCheckWorker @AssistedInject constructor(
                         versionName = update.versionName,
                         downloadUrl = update.downloadUrl,
                         releaseNotes = update.releaseNotes,
+                    )
+                    apkInstaller.download(update.downloadUrl).fold(
+                        onSuccess = {
+                            preferencesRepository.setUpdateReady(true)
+                            updateNotifier.showUpdateReady(update.versionName)
+                        },
+                        onFailure = {
+                            preferencesRepository.setUpdateReady(false)
+                        },
                     )
                 }
             },

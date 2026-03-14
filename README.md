@@ -2,7 +2,13 @@
 
 An e-ink optimized Substack reader for Android.
 
-Built for the Boox NoteAir5C. A personal project for an audience of one, published under GPL v3 for anyone who finds it useful.
+Built for Boox e-ink devices. A personal project published under GPL v3 for anyone who finds it useful.
+
+## Install
+
+Grab the latest APK from [GitHub Releases](https://github.com/christi4nity/re-ink/releases/latest) and sideload it. The app checks for updates automatically and will prompt you to install when a new version is available.
+
+**Requirements:** Android 9+ (API 28), e-ink device recommended but not required.
 
 ## Features
 
@@ -24,15 +30,16 @@ Built for the Boox NoteAir5C. A personal project for an audience of one, publish
 - Archive for finished articles
 - Long-press actions: archive, delete, unarchive
 
-**Sync**
+**Sync & Updates**
 - Background sync via WorkManager (4-hour periodic, wifi-only)
 - Cross-device sync for read/archive state, feeds, and reading preferences
 - Substack browser sign-in (WebView) with manual SID fallback
+- Auto-update: checks GitHub Releases daily, downloads in background, notifies when ready
 
 **UI**
 - E-ink optimized: grayscale, no animations, bold typography, no ripple effects
 
-## Build
+## Build from source
 
 Requires JDK 17, Android SDK, min SDK 28.
 
@@ -40,9 +47,20 @@ Requires JDK 17, Android SDK, min SDK 28.
 # Debug build
 ./gradlew assembleDebug
 
-# Install on connected device (JDK 17 required)
+# Install on connected device
 JAVA_HOME="/path/to/jdk17" ./gradlew installDebug
 ```
+
+### Release builds
+
+Release APKs are built automatically by GitHub Actions when a version tag is pushed:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+This triggers a workflow that builds a signed APK and publishes it as a GitHub Release.
 
 ## Architecture
 

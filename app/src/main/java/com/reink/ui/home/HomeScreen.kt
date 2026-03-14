@@ -24,6 +24,7 @@ import com.reink.ui.components.DateHeader
 import com.reink.ui.components.EmptyState
 import com.reink.ui.components.ErrorBanner
 import com.reink.ui.components.LoadingIndicator
+import com.reink.ui.components.UpdateBanner
 import com.reink.ui.feed.ArticleListItem
 import com.reink.ui.readlater.ReadLaterListItem
 
@@ -67,6 +68,14 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            val pendingUpdate = state.availableUpdate
+            if (state.updateReady && pendingUpdate != null) {
+                UpdateBanner(
+                    versionName = pendingUpdate.versionName,
+                    onInstall = { viewModel.installUpdate() },
+                )
+            }
+
             state.error?.let { errorMessage ->
                 Row(
                     modifier = Modifier

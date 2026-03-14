@@ -408,8 +408,12 @@ class SettingsViewModel @Inject constructor(
     fun downloadUpdate(downloadUrl: String) {
         viewModelScope.launch {
             updateDownloadInProgress.value = true
-            apkInstaller.downloadAndInstall(downloadUrl).fold(
-                onSuccess = { updateDownloadInProgress.value = false },
+            apkInstaller.download(downloadUrl).fold(
+                onSuccess = {
+                    preferencesRepository.setUpdateReady(true)
+                    updateDownloadInProgress.value = false
+                    apkInstaller.install()
+                },
                 onFailure = {
                     updateStatus.value = "Download failed: ${it.message}"
                     updateDownloadInProgress.value = false

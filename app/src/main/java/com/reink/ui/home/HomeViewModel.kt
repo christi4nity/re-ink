@@ -3,6 +3,7 @@ package com.reink.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reink.data.email.EmailCredentialsStore
+import com.reink.data.model.AppUpdate
 import com.reink.data.model.Feed
 import com.reink.data.remote.CloudQueueClient
 import com.reink.data.repository.ArticleRepository
@@ -10,6 +11,7 @@ import com.reink.data.repository.EmailSyncRepository
 import com.reink.data.repository.FeedRepository
 import com.reink.data.repository.PreferencesRepository
 import com.reink.data.repository.ReadLaterRepository
+import com.reink.update.ApkInstaller
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +25,8 @@ data class HomeUiState(
     val sections: List<DateSection<HomeItem>> = emptyList(),
     val isSyncing: Boolean = false,
     val error: String? = null,
+    val availableUpdate: AppUpdate? = null,
+    val updateReady: Boolean = false,
 )
 
 @HiltViewModel
@@ -34,10 +38,21 @@ class HomeViewModel @Inject constructor(
     private val emailCredentialsStore: EmailCredentialsStore,
     private val cloudQueueClient: CloudQueueClient,
     private val preferencesRepository: PreferencesRepository,
+    private val apkInstaller: ApkInstaller,
 ) : ViewModel() {
 
     private val isSyncing = MutableStateFlow(false)
     private val error = MutableStateFlow<String?>(null)
+
+    private data class UpdateInfo(
+        val update: AppUpdate? = null,
+        val ready: Boolean = false,
+    )
+
+    private val updateInfo = combine(
+        preferencesRepository.observeAvailableUpdate(),
+        preferencesRepository.observeUpdateReady(),
+    ) { update, ready -> UpdateInfo(update, ready) }
 
     val uiState: StateFlow<HomeUiState> = combine(
         articleRepository.observe(feedId = null, unreadOnly = true),
@@ -45,7 +60,16 @@ class HomeViewModel @Inject constructor(
         feedRepository.observeAll(),
         isSyncing,
         error,
-    ) { articles, readLaterItems, feeds, syncing, err ->
+        updateInfo,
+    ) { flows ->
+        @Suppress("UNCHECKED_CAST")
+        val articles = flows[0] as List<com.reink.data.model.Article>
+        val readLaterItems = flows[1] as List<com.reink.data.model.ReadLaterItem>
+        val feeds = flows[2] as List<Feed>
+        val syncing = flows[3] as Boolean
+        val err = flows[4] as String?
+        val update = flows[5] as UpdateInfo
+
         val feedTitles = feeds.associate { it.id to it.title }
 
         val homeItems = articles.map { article ->
@@ -64,6 +88,8 @@ class HomeViewModel @Inject constructor(
             sections = sections,
             isSyncing = syncing,
             error = err,
+            availableUpdate = update.update,
+            updateReady = update.ready,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -140,6 +166,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             readLaterRepository.delete(id)
         }
+    }
+
+    fun installUpdate() {
+        apkInstaller.install()
     }
 
     fun dismissError() {

@@ -46,6 +46,7 @@ class PreferencesRepository @Inject constructor(
         private val KEY_UPDATE_DOWNLOAD_URL = stringPreferencesKey("update_download_url")
         private val KEY_UPDATE_RELEASE_NOTES = stringPreferencesKey("update_release_notes")
         private val KEY_UPDATE_DISMISSED_VERSION = stringPreferencesKey("update_dismissed_version")
+        private val KEY_UPDATE_READY = booleanPreferencesKey("update_ready")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -221,6 +222,14 @@ class PreferencesRepository @Inject constructor(
     suspend fun dismissUpdate(versionName: String) {
         dataStore.edit { store ->
             store[KEY_UPDATE_DISMISSED_VERSION] = versionName
+            store[KEY_UPDATE_READY] = false
         }
+    }
+
+    fun observeUpdateReady(): Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_UPDATE_READY] ?: false }
+
+    suspend fun setUpdateReady(ready: Boolean) {
+        dataStore.edit { store -> store[KEY_UPDATE_READY] = ready }
     }
 }
