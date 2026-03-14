@@ -8,9 +8,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SubstackEmailParser @Inject constructor() {
+class SubstackEmailParser @Inject constructor() : EmailParser {
 
-    fun parse(message: Message): EmailArticle? {
+    override fun canParse(message: Message): Boolean {
+        val listId = message.getHeader("List-Id")?.firstOrNull() ?: return false
+        val subdomain = extractSubdomain(listId) ?: return false
+        return subdomain != "www"
+    }
+
+    override fun parse(message: Message): EmailArticle? {
         // List-Id is the reliable indicator of a genuine Substack newsletter email.
         // Forwards, verification codes, and non-article emails won't have it.
         val listId = message.getHeader("List-Id")?.firstOrNull() ?: return null
