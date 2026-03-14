@@ -66,34 +66,27 @@ fun SettingsScreen(
             }
 
             item {
-                EmailSettingsSection(
+                EmailSourcesSection(
                     emailConfigured = state.emailConfigured,
                     emailHost = state.emailHost,
                     emailUsername = state.emailUsername,
                     emailTesting = state.emailTesting,
                     emailTestResult = state.emailTestResult,
                     emailSyncStatus = state.emailSyncStatus,
-                    showConfigDialog = state.showEmailConfigDialog,
-                    onShowConfigDialog = { viewModel.showEmailConfigDialog() },
-                    onDismissConfigDialog = { viewModel.dismissEmailConfigDialog() },
-                    onSaveConfig = { viewModel.saveEmailConfig(it) },
+                    showEmailConfigDialog = state.showEmailConfigDialog,
+                    onShowEmailConfigDialog = { viewModel.showEmailConfigDialog() },
+                    onDismissEmailConfigDialog = { viewModel.dismissEmailConfigDialog() },
+                    onSaveEmailConfig = { viewModel.saveEmailConfig(it) },
                     onTestConnection = { viewModel.testEmailConnection() },
                     onSyncNow = { viewModel.syncEmail() },
-                    onRemove = { viewModel.clearEmailConfig() },
+                    onRemoveEmail = { viewModel.clearEmailConfig() },
+                    domains = state.allowedSenderDomains,
+                    showAddDomainDialog = state.showAddDomainDialog,
+                    onShowAddDomainDialog = { viewModel.showAddDomainDialog() },
+                    onDismissAddDomainDialog = { viewModel.dismissAddDomainDialog() },
+                    onAddDomain = { viewModel.addAllowedSenderDomain(it) },
+                    onRemoveDomain = { viewModel.removeAllowedSenderDomain(it) },
                 )
-            }
-
-            if (state.emailConfigured) {
-                item {
-                    AllowedSendersSection(
-                        domains = state.allowedSenderDomains,
-                        showAddDialog = state.showAddDomainDialog,
-                        onShowAddDialog = { viewModel.showAddDomainDialog() },
-                        onDismissAddDialog = { viewModel.dismissAddDomainDialog() },
-                        onAddDomain = { viewModel.addAllowedSenderDomain(it) },
-                        onRemoveDomain = { viewModel.removeAllowedSenderDomain(it) },
-                    )
-                }
             }
 
             item {
