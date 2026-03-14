@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.reink.data.model.AppUpdate
 import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.ReadingPreferences
@@ -46,6 +47,7 @@ class PreferencesRepository @Inject constructor(
         private val KEY_UPDATE_RELEASE_NOTES = stringPreferencesKey("update_release_notes")
         private val KEY_UPDATE_DISMISSED_VERSION = stringPreferencesKey("update_dismissed_version")
         private val KEY_UPDATE_READY = booleanPreferencesKey("update_ready")
+        private val KEY_ALLOWED_SENDER_DOMAINS = stringSetPreferencesKey("allowed_sender_domains")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -220,5 +222,30 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setUpdateReady(ready: Boolean) {
         dataStore.edit { store -> store[KEY_UPDATE_READY] = ready }
+    }
+
+    fun observeAllowedSenderDomains(): Flow<Set<String>> =
+        dataStore.data.map { prefs -> prefs[KEY_ALLOWED_SENDER_DOMAINS] ?: emptySet() }
+
+    suspend fun getAllowedSenderDomains(): Set<String> =
+        dataStore.data.first()[KEY_ALLOWED_SENDER_DOMAINS] ?: emptySet()
+
+    suspend fun addAllowedSenderDomain(domain: String) {
+        val cleaned = domain
+            .trim()
+            .lowercase()
+            .substringAfter("@")  // Handle user@domain.com -> domain.com
+        if (cleaned.isBlank() || '.' !in cleaned) return  // Basic validation
+        dataStore.edit { store ->
+            val current = store[KEY_ALLOWED_SENDER_DOMAINS] ?: emptySet()
+            store[KEY_ALLOWED_SENDER_DOMAINS] = current + cleaned
+        }
+    }
+
+    suspend fun removeAllowedSenderDomain(domain: String) {
+        dataStore.edit { store ->
+            val current = store[KEY_ALLOWED_SENDER_DOMAINS] ?: emptySet()
+            store[KEY_ALLOWED_SENDER_DOMAINS] = current - domain.lowercase()
+        }
     }
 }
