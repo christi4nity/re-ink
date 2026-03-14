@@ -44,7 +44,7 @@ class GenericEmailParser @Inject constructor(
 
         return EmailArticle(
             subject = message.subject ?: "",
-            subtitle = "",
+            subtitle = message.getHeader("X-Subtitle")?.firstOrNull()?.trim() ?: "",
             senderAddress = fromAddress.address ?: "",
             senderName = fromAddress.personal ?: fromAddress.address ?: "",
             substackSubdomain = "",
