@@ -1,8 +1,6 @@
 package com.reink.data.email
 
 import jakarta.mail.Message
-import jakarta.mail.Multipart
-import jakarta.mail.Part
 import jakarta.mail.internet.InternetAddress
 import org.jsoup.Jsoup
 import java.net.URI
@@ -224,26 +222,6 @@ class SubstackEmailParser @Inject constructor() {
         val match = Regex("""<(https://[^>]+/p/[^>]+)>""").find(listPost)
         return match?.groupValues?.get(1)?.let(::stripUtmParams)
     }
-
-    private fun extractHtmlBody(part: Part): String? {
-        if (part.isMimeType("text/html")) {
-            return part.content as? String
-        }
-        if (part.isMimeType("multipart/*")) {
-            val multipart = part.content as? Multipart ?: return null
-            for (i in 0 until multipart.count) {
-                val result = extractHtmlBody(multipart.getBodyPart(i))
-                if (result != null) return result
-            }
-        }
-        return null
-    }
-
-    private fun getMessageId(message: Message): String? =
-        message.getHeader("Message-ID")?.firstOrNull()
-            ?.trim()
-            ?.removePrefix("<")
-            ?.removeSuffix(">")
 
     private fun extractViewOnlineUrl(html: String): String? {
         val pattern = Regex("""href="(https://[^"]*(?:substack\.com|[^"]+)/p/[^"]*)"""")
