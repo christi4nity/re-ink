@@ -1,6 +1,7 @@
 package com.reink.data.email
 
 import android.util.Log
+import com.reink.data.repository.PreferencesRepository
 import jakarta.mail.Message
 import jakarta.mail.internet.InternetAddress
 
@@ -8,10 +9,14 @@ import jakarta.mail.internet.InternetAddress
  * Ordered chain of email parsers. First parser whose [EmailParser.canParse]
  * returns true handles the message. Generic parser should be last (catch-all).
  */
-class EmailParserChain(private val parsers: List<EmailParser>) {
+class EmailParserChain(
+    private val parsers: List<EmailParser>,
+    private val preferencesRepository: PreferencesRepository,
+) {
 
     /** Called once before a sync pass to let parsers refresh cached state. */
     suspend fun refreshParsers() {
+        preferencesRepository.seedDefaultAllowedDomains()
         for (parser in parsers) {
             if (parser is Refreshable) parser.refresh()
         }

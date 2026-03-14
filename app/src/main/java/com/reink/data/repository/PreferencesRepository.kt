@@ -48,6 +48,7 @@ class PreferencesRepository @Inject constructor(
         private val KEY_UPDATE_DISMISSED_VERSION = stringPreferencesKey("update_dismissed_version")
         private val KEY_UPDATE_READY = booleanPreferencesKey("update_ready")
         private val KEY_ALLOWED_SENDER_DOMAINS = stringSetPreferencesKey("allowed_sender_domains")
+        private val KEY_DOMAINS_SEEDED = booleanPreferencesKey("allowed_sender_domains_seeded")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -246,6 +247,17 @@ class PreferencesRepository @Inject constructor(
         dataStore.edit { store ->
             val current = store[KEY_ALLOWED_SENDER_DOMAINS] ?: emptySet()
             store[KEY_ALLOWED_SENDER_DOMAINS] = current - domain.lowercase()
+        }
+    }
+
+    suspend fun seedDefaultAllowedDomains() {
+        val hasSeeded = dataStore.data.first()[KEY_DOMAINS_SEEDED] ?: false
+        if (!hasSeeded) {
+            dataStore.edit { store ->
+                val current = store[KEY_ALLOWED_SENDER_DOMAINS] ?: emptySet()
+                store[KEY_ALLOWED_SENDER_DOMAINS] = current + "substack.com"
+                store[KEY_DOMAINS_SEEDED] = true
+            }
         }
     }
 }

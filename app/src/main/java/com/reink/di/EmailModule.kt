@@ -7,6 +7,7 @@ import com.reink.data.email.EncryptedEmailCredentialsStore
 import com.reink.data.email.GenericEmailParser
 import com.reink.data.email.ImapEmailContentSource
 import com.reink.data.email.SubstackEmailParser
+import com.reink.data.repository.PreferencesRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -36,8 +37,10 @@ abstract class EmailModule {
         fun provideEmailParserChain(
             substackParser: SubstackEmailParser,
             genericParser: GenericEmailParser,
+            preferencesRepository: PreferencesRepository,
         ): EmailParserChain = EmailParserChain(
-            listOf(substackParser, genericParser)
+            listOf(substackParser, genericParser),
+            preferencesRepository,
         )
     }
 }
