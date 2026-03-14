@@ -71,7 +71,7 @@ fun HomeScreen(
                         onClick = onNavigateToSettings,
                     ) {
                         Text(
-                            text = "\u2699",
+                            text = "\u2261",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
