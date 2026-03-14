@@ -10,6 +10,14 @@ import jakarta.mail.Message
  * 1. Create a class implementing this interface
  * 2. Register it in EmailModule.kt's parser chain (between Substack and generic)
  */
+/**
+ * Optional interface for parsers that need to refresh cached state before a sync pass
+ * (e.g., reloading an allowlist from the database).
+ */
+interface Refreshable {
+    suspend fun refresh()
+}
+
 interface EmailParser {
     /**
      * Inspect message headers/sender to determine if this parser can handle it.
