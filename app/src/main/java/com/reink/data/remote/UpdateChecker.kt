@@ -29,7 +29,14 @@ class UpdateChecker @Inject constructor(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun check(): Result<AppUpdate?> = runCatching {
+    fun check(): Result<AppUpdate?> = try {
+        Result.success(doCheck())
+    } catch (e: Exception) {
+        android.util.Log.e("ReInk", "Update check failed", e)
+        Result.failure(e)
+    }
+
+    private fun doCheck(): AppUpdate? {
         val request = Request.Builder()
             .url(RELEASES_URL)
             .header("Accept", "application/vnd.github+json")
@@ -45,13 +52,13 @@ class UpdateChecker @Inject constructor(
         val latestVersion = release.tag_name.removePrefix("v")
 
         if (!isNewer(latestVersion, BuildConfig.VERSION_NAME)) {
-            return@runCatching null
+            return null
         }
 
         val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
-            ?: return@runCatching null
+            ?: return null
 
-        AppUpdate(
+        return AppUpdate(
             versionName = latestVersion,
             downloadUrl = apkAsset.browser_download_url,
             releaseNotes = release.body,

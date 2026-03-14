@@ -395,7 +395,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             updateCheckInProgress.value = true
             updateStatus.value = null
-            updateChecker.check().fold(
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                updateChecker.check()
+            }.fold(
                 onSuccess = { update ->
                     if (update != null) {
                         preferencesRepository.setAvailableUpdate(
