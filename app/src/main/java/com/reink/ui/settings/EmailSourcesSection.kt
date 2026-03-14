@@ -158,6 +158,13 @@ fun EmailSourcesSection(
         }
 
         // Domain allowlist
+        Text(
+            text = "ALLOWED DOMAINS",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+
         if (domains.isEmpty()) {
             Text(
                 text = "Add a sender domain to receive newsletters via email",

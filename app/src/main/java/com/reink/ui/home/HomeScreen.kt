@@ -66,7 +66,7 @@ fun HomeScreen(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             else
                                 MaterialTheme.colorScheme.primary,
-                            modifier = if (!state.isSyncing) Modifier.offset(y = (-2).dp) else Modifier,
+                            modifier = if (!state.isSyncing) Modifier.offset(y = (-3).dp) else Modifier,
                         )
                     }
                     TextButton(
