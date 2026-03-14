@@ -21,22 +21,9 @@ Grab the latest APK from [GitHub Releases](https://github.com/christi4nity/re-in
 
 Articles appear in the **Home** tab (unified unread feed) and the **Feed** tab (per-feed browsing).
 
-### Signing in to Substack
-
-Some Substack publications have private RSS feeds that require authentication to access at all. Signing in lets the app fetch these feeds.
-
-1. In **Settings**, find **Substack Authentication**
-2. Tap **Sign in with browser**
-3. Sign in with your Substack account in the WebView that opens
-4. The app captures your session cookie automatically
-
-**Advanced fallback:** If browser sign-in doesn't work, you can manually paste your `substack.sid` cookie value. Get it from Chrome DevTools: F12 > Application > Cookies > `substack.sid`.
-
-> **Important:** Signing in does **not** unlock full paid article content. RSS feeds always return only the free preview for paid posts, regardless of authentication. To read full paid content, you need email ingestion (see below).
-
 ## Email ingestion (paid content)
 
-The only way to get full paid Substack content into re:ink is through email. RSS feeds always return a truncated preview for paid posts — even when authenticated.
+The only way to get full paid Substack content into re:ink is through email. RSS feeds always return a truncated preview for paid posts.
 
 ### How it works
 
