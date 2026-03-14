@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.reink.data.model.AppUpdate
 import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.ReadingPreferences
 import com.reink.data.model.SyncConfig
@@ -41,6 +42,10 @@ class PreferencesRepository @Inject constructor(
         private val KEY_SYNC_DEVICE_ID = stringPreferencesKey("sync_device_id")
         private val KEY_SYNC_LAST_SYNCED_AT = longPreferencesKey("sync_last_synced_at")
         private val KEY_PREFS_MODIFIED_AT = longPreferencesKey("prefs_modified_at")
+        private val KEY_UPDATE_VERSION = stringPreferencesKey("update_version")
+        private val KEY_UPDATE_DOWNLOAD_URL = stringPreferencesKey("update_download_url")
+        private val KEY_UPDATE_RELEASE_NOTES = stringPreferencesKey("update_release_notes")
+        private val KEY_UPDATE_DISMISSED_VERSION = stringPreferencesKey("update_dismissed_version")
     }
 
     fun observeReadingPreferences(): Flow<ReadingPreferences> =
@@ -191,5 +196,31 @@ class PreferencesRepository @Inject constructor(
 
     suspend fun setPreferencesModifiedAt(timestamp: Long) {
         dataStore.edit { store -> store[KEY_PREFS_MODIFIED_AT] = timestamp }
+    }
+
+    fun observeAvailableUpdate(): Flow<AppUpdate?> =
+        dataStore.data.map { prefs ->
+            val version = prefs[KEY_UPDATE_VERSION] ?: return@map null
+            val dismissedVersion = prefs[KEY_UPDATE_DISMISSED_VERSION]
+            if (version == dismissedVersion) return@map null
+            AppUpdate(
+                versionName = version,
+                downloadUrl = prefs[KEY_UPDATE_DOWNLOAD_URL] ?: return@map null,
+                releaseNotes = prefs[KEY_UPDATE_RELEASE_NOTES] ?: "",
+            )
+        }
+
+    suspend fun setAvailableUpdate(versionName: String, downloadUrl: String, releaseNotes: String) {
+        dataStore.edit { store ->
+            store[KEY_UPDATE_VERSION] = versionName
+            store[KEY_UPDATE_DOWNLOAD_URL] = downloadUrl
+            store[KEY_UPDATE_RELEASE_NOTES] = releaseNotes
+        }
+    }
+
+    suspend fun dismissUpdate(versionName: String) {
+        dataStore.edit { store ->
+            store[KEY_UPDATE_DISMISSED_VERSION] = versionName
+        }
     }
 }

@@ -59,6 +59,20 @@ class SyncScheduler @Inject constructor(
             ExistingPeriodicWorkPolicy.KEEP,
             deviceSyncRequest,
         )
+
+        val updateCheckConstraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val updateCheckRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
+            24, TimeUnit.HOURS,
+        ).setConstraints(updateCheckConstraints).build()
+
+        workManager.enqueueUniquePeriodicWork(
+            UpdateCheckWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            updateCheckRequest,
+        )
     }
 
     fun triggerImmediateSync() {

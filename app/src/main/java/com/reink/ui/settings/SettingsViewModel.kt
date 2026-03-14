@@ -2,19 +2,23 @@ package com.reink.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reink.BuildConfig
 import com.reink.data.email.EmailContentSource
 import com.reink.data.email.EmailCredentials
 import com.reink.data.email.EmailCredentialsStore
+import com.reink.data.model.AppUpdate
 import com.reink.data.model.CloudQueueConfig
 import com.reink.data.model.Feed
 import com.reink.data.model.ReadingPreferences
 import com.reink.data.model.SyncConfig
 import com.reink.data.remote.CloudQueueClient
 import com.reink.data.remote.SyncClient
+import com.reink.data.remote.UpdateChecker
 import com.reink.data.repository.EmailSyncRepository
 import com.reink.data.repository.FeedRepository
 import com.reink.data.repository.PreferencesRepository
 import com.reink.data.repository.SyncRepository
+import com.reink.update.ApkInstaller
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +47,11 @@ data class SettingsUiState(
     val syncInProgress: Boolean = false,
     val syncStatus: String? = null,
     val syncLastSyncTime: String? = null,
+    val currentVersion: String = BuildConfig.VERSION_NAME,
+    val availableUpdate: AppUpdate? = null,
+    val updateCheckInProgress: Boolean = false,
+    val updateDownloadInProgress: Boolean = false,
+    val updateStatus: String? = null,
 )
 
 private data class EmailState(
@@ -63,6 +72,8 @@ class SettingsViewModel @Inject constructor(
     private val cloudQueueClient: CloudQueueClient,
     private val syncClient: SyncClient,
     private val syncRepository: SyncRepository,
+    private val updateChecker: UpdateChecker,
+    private val apkInstaller: ApkInstaller,
 ) : ViewModel() {
 
     private val showAddFeedDialog = MutableStateFlow(false)
@@ -77,6 +88,9 @@ class SettingsViewModel @Inject constructor(
     private val syncInProgress = MutableStateFlow(false)
     private val syncStatus = MutableStateFlow<String?>(null)
     private val syncLastSyncTime = MutableStateFlow<String?>(null)
+    private val updateCheckInProgress = MutableStateFlow(false)
+    private val updateDownloadInProgress = MutableStateFlow(false)
+    private val updateStatus = MutableStateFlow<String?>(null)
 
     init {
         emailConfigured.value = emailCredentialsStore.isConfigured()
@@ -130,6 +144,22 @@ class SettingsViewModel @Inject constructor(
         DeviceSyncState(config, connecting, syncing, status, lastSync)
     }
 
+    private data class UpdateState(
+        val availableUpdate: AppUpdate? = null,
+        val checkInProgress: Boolean = false,
+        val downloadInProgress: Boolean = false,
+        val status: String? = null,
+    )
+
+    private val updateState = combine(
+        preferencesRepository.observeAvailableUpdate(),
+        updateCheckInProgress,
+        updateDownloadInProgress,
+        updateStatus,
+    ) { update, checking, downloading, status ->
+        UpdateState(update, checking, downloading, status)
+    }
+
     val uiState: StateFlow<SettingsUiState> = combine(
         feedRepository.observeRssFeeds(),
         preferencesRepository.observeReadingPreferences(),
@@ -137,6 +167,7 @@ class SettingsViewModel @Inject constructor(
         emailState,
         cloudQueueState,
         deviceSyncState,
+        updateState,
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val feeds = flows[0] as List<Feed>
@@ -145,6 +176,7 @@ class SettingsViewModel @Inject constructor(
         val email = flows[3] as EmailState
         val cloud = flows[4] as CloudQueueState
         val sync = flows[5] as DeviceSyncState
+        val update = flows[6] as UpdateState
         val creds = emailCredentialsStore.get()
         SettingsUiState(
             feeds = feeds,
@@ -165,6 +197,10 @@ class SettingsViewModel @Inject constructor(
             syncInProgress = sync.inProgress,
             syncStatus = sync.status,
             syncLastSyncTime = sync.lastSyncTime,
+            availableUpdate = update.availableUpdate,
+            updateCheckInProgress = update.checkInProgress,
+            updateDownloadInProgress = update.downloadInProgress,
+            updateStatus = update.status,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -342,6 +378,49 @@ class SettingsViewModel @Inject constructor(
                 },
             )
             syncInProgress.value = false
+        }
+    }
+
+    fun checkForUpdate() {
+        viewModelScope.launch {
+            updateCheckInProgress.value = true
+            updateStatus.value = null
+            updateChecker.check().fold(
+                onSuccess = { update ->
+                    if (update != null) {
+                        preferencesRepository.setAvailableUpdate(
+                            versionName = update.versionName,
+                            downloadUrl = update.downloadUrl,
+                            releaseNotes = update.releaseNotes,
+                        )
+                    } else {
+                        updateStatus.value = "Up to date"
+                    }
+                },
+                onFailure = {
+                    updateStatus.value = "Check failed: ${it.message}"
+                },
+            )
+            updateCheckInProgress.value = false
+        }
+    }
+
+    fun downloadUpdate(downloadUrl: String) {
+        viewModelScope.launch {
+            updateDownloadInProgress.value = true
+            apkInstaller.downloadAndInstall(downloadUrl).fold(
+                onSuccess = { updateDownloadInProgress.value = false },
+                onFailure = {
+                    updateStatus.value = "Download failed: ${it.message}"
+                    updateDownloadInProgress.value = false
+                },
+            )
+        }
+    }
+
+    fun dismissUpdate(versionName: String) {
+        viewModelScope.launch {
+            preferencesRepository.dismissUpdate(versionName)
         }
     }
 

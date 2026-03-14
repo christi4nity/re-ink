@@ -49,6 +49,23 @@ fun SettingsScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
+                AppUpdateSection(
+                    currentVersion = state.currentVersion,
+                    availableUpdate = state.availableUpdate,
+                    checkInProgress = state.updateCheckInProgress,
+                    downloadInProgress = state.updateDownloadInProgress,
+                    updateStatus = state.updateStatus,
+                    onCheckForUpdate = { viewModel.checkForUpdate() },
+                    onDownload = {
+                        state.availableUpdate?.let { viewModel.downloadUpdate(it.downloadUrl) }
+                    },
+                    onDismiss = {
+                        state.availableUpdate?.let { viewModel.dismissUpdate(it.versionName) }
+                    },
+                )
+            }
+
+            item {
                 EmailSettingsSection(
                     emailConfigured = state.emailConfigured,
                     emailHost = state.emailHost,
