@@ -193,15 +193,39 @@ class EmailSyncRepository @Inject constructor(
 
     private suspend fun getOrCreateFeedForSender(email: EmailArticle): FeedEntity {
         val subdomain = email.substackSubdomain
-        val allFeeds = feedDao.getAllOnce()
 
-        // Reuse existing feed with matching subdomain
+        // Generic emails (no subdomain) — key on sender address local part
+        if (subdomain.isBlank()) {
+            val senderLocal = email.senderAddress.substringBefore("@", "")
+            if (senderLocal.isNotBlank()) {
+                val existing = feedDao.getFeedsWithEmailPatterns().find { feed ->
+                    feed.emailSenderPattern?.equals(senderLocal, ignoreCase = true) == true
+                }
+                if (existing != null) return existing
+            }
+
+            val id = feedDao.insert(
+                FeedEntity(
+                    title = email.senderName.ifBlank { email.senderAddress },
+                    url = "email://${email.senderAddress}",
+                    siteUrl = "",
+                    substackSubdomain = null,
+                    requiresAuth = false,
+                    addedAt = System.currentTimeMillis(),
+                    emailSenderPattern = senderLocal.ifBlank { null },
+                ),
+            )
+            return feedDao.getById(id)!!
+        }
+
+        // Substack emails — match by subdomain
+        val allFeeds = feedDao.getAllOnce()
         val bySubdomain = allFeeds.find { feed ->
             feed.substackSubdomain?.equals(subdomain, ignoreCase = true) == true
         }
         if (bySubdomain != null) return bySubdomain
 
-        // Create new feed — use From name as title, subdomain for matching
+        // Create new Substack feed
         val title = email.senderName.ifBlank { subdomain }
         val siteUrl = email.viewOnlineUrl?.let { url ->
             try {
@@ -210,7 +234,6 @@ class EmailSyncRepository @Inject constructor(
             } catch (_: Exception) { "" }
         } ?: ""
 
-        // Use sender local part as pattern (e.g. "cubicanalytics"), not the domain ("substack.com")
         val senderLocal = email.senderAddress.substringBefore("@", "")
 
         val id = feedDao.insert(
