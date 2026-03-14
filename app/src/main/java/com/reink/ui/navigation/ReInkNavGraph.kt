@@ -31,7 +31,7 @@ import com.reink.ui.settings.SettingsScreen
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
-private val bottomNavScreens = listOf(Screen.Home, Screen.Feed, Screen.ReadLater, Screen.Settings)
+private val bottomNavScreens = listOf(Screen.Home, Screen.Feed, Screen.ReadLater)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,12 +102,18 @@ fun ReInkNavGraph(
                     onReadLaterClick = { readLaterId ->
                         navController.navigate(Screen.Reader.createRoute("readlater", readLaterId))
                     },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
+                    },
                 )
             }
             composable(Screen.Feed.route) {
                 FeedScreen(
                     onArticleClick = { articleId ->
                         navController.navigate(Screen.Reader.createRoute("article", articleId))
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
                     },
                 )
             }
@@ -116,10 +122,14 @@ fun ReInkNavGraph(
                     onItemClick = { readLaterId ->
                         navController.navigate(Screen.Reader.createRoute("readlater", readLaterId))
                     },
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
+                    },
                 )
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
+                    onBack = { navController.popBackStack() },
                     onNavigateToArchive = {
                         navController.navigate(Screen.Archive.route)
                     },

@@ -32,6 +32,7 @@ import com.reink.ui.readlater.ReadLaterListItem
 fun HomeScreen(
     onArticleClick: (Long) -> Unit = {},
     onReadLaterClick: (Long) -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -41,7 +42,7 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp),
+                    .padding(start = 16.dp, end = 4.dp, top = 14.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -49,15 +50,32 @@ fun HomeScreen(
                     text = "re:ink",
                     style = MaterialTheme.typography.titleLarge,
                 )
-                TextButton(
-                    onClick = { viewModel.sync() },
-                    enabled = !state.isSyncing,
-                ) {
-                    Text(
-                        text = if (state.isSyncing) "Syncing\u2026" else "Sync",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                Row {
+                    TextButton(
+                        onClick = { viewModel.sync() },
+                        enabled = !state.isSyncing,
+                    ) {
+                        Text(
+                            text = if (state.isSyncing) "Syncing\u2026" else "\u21BB",
+                            style = if (state.isSyncing)
+                                MaterialTheme.typography.labelLarge
+                            else
+                                MaterialTheme.typography.titleLarge,
+                            color = if (state.isSyncing)
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else
+                                MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    TextButton(
+                        onClick = onNavigateToSettings,
+                    ) {
+                        Text(
+                            text = "\u2699",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         },
