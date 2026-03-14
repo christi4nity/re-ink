@@ -1,5 +1,6 @@
 package com.reink.data.email
 
+import com.reink.data.repository.PreferencesRepository
 import jakarta.mail.Message
 import jakarta.mail.internet.InternetAddress
 import org.jsoup.Jsoup
@@ -8,9 +9,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SubstackEmailParser @Inject constructor() : EmailParser {
+class SubstackEmailParser @Inject constructor(
+    private val preferencesRepository: PreferencesRepository,
+) : EmailParser, Refreshable {
+
+    @Volatile
+    private var cachedDomains: Set<String> = emptySet()
+
+    override suspend fun refresh() {
+        cachedDomains = preferencesRepository.getAllowedSenderDomains()
+    }
 
     override fun canParse(message: Message): Boolean {
+        if (!cachedDomains.any { it.equals("substack.com", ignoreCase = true) }) return false
         val listId = message.getHeader("List-Id")?.firstOrNull() ?: return false
         val subdomain = extractSubdomain(listId) ?: return false
         return subdomain != "www"
