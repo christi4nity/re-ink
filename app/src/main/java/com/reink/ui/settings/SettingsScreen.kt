@@ -83,6 +83,19 @@ fun SettingsScreen(
                 )
             }
 
+            if (state.emailConfigured) {
+                item {
+                    AllowedSendersSection(
+                        domains = state.allowedSenderDomains,
+                        showAddDialog = state.showAddDomainDialog,
+                        onShowAddDialog = { viewModel.showAddDomainDialog() },
+                        onDismissAddDialog = { viewModel.dismissAddDomainDialog() },
+                        onAddDomain = { viewModel.addAllowedSenderDomain(it) },
+                        onRemoveDomain = { viewModel.removeAllowedSenderDomain(it) },
+                    )
+                }
+            }
+
             item {
                 DeviceSyncSection(
                     config = state.syncConfig,

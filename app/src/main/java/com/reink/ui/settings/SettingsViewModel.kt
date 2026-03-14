@@ -39,6 +39,8 @@ data class SettingsUiState(
     val emailTestResult: String? = null,
     val emailSyncStatus: String? = null,
     val showEmailConfigDialog: Boolean = false,
+    val allowedSenderDomains: Set<String> = emptySet(),
+    val showAddDomainDialog: Boolean = false,
     val cloudQueueConfig: CloudQueueConfig = CloudQueueConfig(),
     val cloudQueueSetupInProgress: Boolean = false,
     val cloudQueueStatus: String? = null,
@@ -82,6 +84,7 @@ class SettingsViewModel @Inject constructor(
     private val emailTestResult = MutableStateFlow<String?>(null)
     private val emailSyncStatus = MutableStateFlow<String?>(null)
     private val emailConfigured = MutableStateFlow(false)
+    private val showAddDomainDialog = MutableStateFlow(false)
     private val cloudQueueSetupInProgress = MutableStateFlow(false)
     private val cloudQueueStatus = MutableStateFlow<String?>(null)
     private val syncConnectInProgress = MutableStateFlow(false)
@@ -168,6 +171,8 @@ class SettingsViewModel @Inject constructor(
         cloudQueueState,
         deviceSyncState,
         updateState,
+        preferencesRepository.observeAllowedSenderDomains(),
+        showAddDomainDialog,
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val feeds = flows[0] as List<Feed>
@@ -177,6 +182,9 @@ class SettingsViewModel @Inject constructor(
         val cloud = flows[4] as CloudQueueState
         val sync = flows[5] as DeviceSyncState
         val update = flows[6] as UpdateState
+        @Suppress("UNCHECKED_CAST")
+        val domains = flows[7] as Set<String>
+        val showDomainDialog = flows[8] as Boolean
         val creds = emailCredentialsStore.get()
         SettingsUiState(
             feeds = feeds,
@@ -189,6 +197,8 @@ class SettingsViewModel @Inject constructor(
             emailTestResult = email.testResult,
             emailSyncStatus = email.syncStatus,
             showEmailConfigDialog = email.showDialog,
+            allowedSenderDomains = domains,
+            showAddDomainDialog = showDomainDialog,
             cloudQueueConfig = cloud.config,
             cloudQueueSetupInProgress = cloud.setupInProgress,
             cloudQueueStatus = cloud.status,
@@ -425,6 +435,27 @@ class SettingsViewModel @Inject constructor(
     fun dismissUpdate(versionName: String) {
         viewModelScope.launch {
             preferencesRepository.dismissUpdate(versionName)
+        }
+    }
+
+    fun showAddDomainDialog() {
+        showAddDomainDialog.value = true
+    }
+
+    fun dismissAddDomainDialog() {
+        showAddDomainDialog.value = false
+    }
+
+    fun addAllowedSenderDomain(domain: String) {
+        viewModelScope.launch {
+            preferencesRepository.addAllowedSenderDomain(domain)
+            showAddDomainDialog.value = false
+        }
+    }
+
+    fun removeAllowedSenderDomain(domain: String) {
+        viewModelScope.launch {
+            preferencesRepository.removeAllowedSenderDomain(domain)
         }
     }
 
