@@ -44,7 +44,7 @@ fun ReadLaterScreen(
                     text = "re:ink",
                     style = MaterialTheme.typography.titleLarge,
                 )
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
                         onClick = { viewModel.sync() },
                         enabled = !state.isSyncing,
