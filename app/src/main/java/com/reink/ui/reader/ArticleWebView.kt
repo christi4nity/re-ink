@@ -242,7 +242,10 @@ private const val PAGINATION_SETUP_JS = """
     ) || 56;
     var dpr = window.devicePixelRatio || 1;
     var extraVerticalInset = measuredOverlayInset / dpr;
-    var basePad = Math.max(0, extraVerticalInset);
+    var userVerticalMargin = parseInt(
+        getComputedStyle(h).getPropertyValue('--margin-vertical')
+    ) || 0;
+    var basePad = Math.max(0, extraVerticalInset) + userVerticalMargin;
     var bottomSafetyInset = Math.max(0, progressBarHeight - basePad);
     var margin = parseInt(
         getComputedStyle(h).getPropertyValue('--margin-horizontal')
