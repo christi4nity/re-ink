@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,11 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Load signing config from local.properties (local dev) or env vars (CI)
+val signingProps: Properties? = rootProject.file("local.properties").let { f ->
+    if (f.exists()) Properties().apply { f.inputStream().use { load(it) } } else null
 }
 
 android {
@@ -21,27 +28,27 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = System.getenv("KEYSTORE_FILE")
-            if (keystoreFile != null) {
-                storeFile = file(keystoreFile)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+            val ksFile = signingProps?.getProperty("signing.storeFile") ?: System.getenv("KEYSTORE_FILE")
+            if (ksFile != null) {
+                storeFile = file(ksFile)
+                storePassword = signingProps?.getProperty("signing.storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = signingProps?.getProperty("signing.keyAlias") ?: System.getenv("KEY_ALIAS")
+                keyPassword = signingProps?.getProperty("signing.keyPassword") ?: System.getenv("KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.findByName("release")?.takeIf { it.storeFile != null }
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            val keystoreFile = System.getenv("KEYSTORE_FILE")
-            if (keystoreFile != null) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.findByName("release")?.takeIf { it.storeFile != null }
         }
     }
 
