@@ -204,10 +204,11 @@ class EmailSyncRepository @Inject constructor(
                 if (existing != null) return existing
             }
 
+            val feedUrl = "email://${email.senderAddress}"
             val id = feedDao.insert(
                 FeedEntity(
                     title = email.senderName.ifBlank { email.senderAddress },
-                    url = "email://${email.senderAddress}",
+                    url = feedUrl,
                     siteUrl = "",
                     substackSubdomain = null,
                     requiresAuth = false,
@@ -215,7 +216,8 @@ class EmailSyncRepository @Inject constructor(
                     emailSenderPattern = senderLocal.ifBlank { null },
                 ),
             )
-            return feedDao.getById(id)!!
+            // OnConflictStrategy.IGNORE returns -1 if URL already exists
+            return if (id != -1L) feedDao.getById(id)!! else feedDao.getByUrl(feedUrl)!!
         }
 
         // Substack emails — match by subdomain
@@ -236,10 +238,11 @@ class EmailSyncRepository @Inject constructor(
 
         val senderLocal = email.senderAddress.substringBefore("@", "")
 
+        val feedUrl = "email://$subdomain"
         val id = feedDao.insert(
             FeedEntity(
                 title = title,
-                url = "email://$subdomain",
+                url = feedUrl,
                 siteUrl = siteUrl,
                 substackSubdomain = subdomain,
                 requiresAuth = false,
@@ -247,7 +250,7 @@ class EmailSyncRepository @Inject constructor(
                 emailSenderPattern = senderLocal.ifBlank { null },
             ),
         )
-        return feedDao.getById(id)!!
+        return if (id != -1L) feedDao.getById(id)!! else feedDao.getByUrl(feedUrl)!!
     }
 
     private enum class EmailAction { UPGRADED, INSERTED, SKIPPED }
