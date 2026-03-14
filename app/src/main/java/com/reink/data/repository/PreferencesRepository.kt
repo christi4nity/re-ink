@@ -30,7 +30,6 @@ class PreferencesRepository @Inject constructor(
         private val KEY_MARGIN_VERTICAL = intPreferencesKey("margin_vertical")
         private val KEY_TEXT_ALIGN = stringPreferencesKey("text_align")
         private val KEY_PAGINATION_MODE = stringPreferencesKey("pagination_mode")
-        private val KEY_SUBSTACK_SID = stringPreferencesKey("substack_sid")
         private val KEY_LAST_EMAIL_SYNC = longPreferencesKey("last_email_sync")
         private val KEY_EMAIL_SYNC_ENABLED = booleanPreferencesKey("email_sync_enabled")
         private val KEY_CLOUD_QUEUE_ENABLED = booleanPreferencesKey("cloud_queue_enabled")
@@ -73,16 +72,6 @@ class PreferencesRepository @Inject constructor(
             store[KEY_PAGINATION_MODE] = prefs.paginationMode
             store[KEY_PREFS_MODIFIED_AT] = System.currentTimeMillis()
         }
-    }
-
-    fun observeSubstackSid(): Flow<String> =
-        dataStore.data.map { prefs -> prefs[KEY_SUBSTACK_SID] ?: "" }
-
-    suspend fun getSubstackSid(): String =
-        dataStore.data.first()[KEY_SUBSTACK_SID] ?: ""
-
-    suspend fun setSubstackSid(sid: String) {
-        dataStore.edit { store -> store[KEY_SUBSTACK_SID] = sid }
     }
 
     fun observeEmailSyncEnabled(): Flow<Boolean> =

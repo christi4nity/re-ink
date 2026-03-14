@@ -44,14 +44,14 @@ Clean Architecture with MVVM. Single-module app (`app/`).
 
 - **`data/model/`** — Domain models: Feed, Article, ReadLaterItem, ReadingPreferences, FetchStatus
 - **`data/local/`** — Room database, entities (FeedEntity, ArticleEntity, ReadLaterEntity), DAOs
-- **`data/remote/`** — RssFetcher (RSS-Parser wrapper), ArticleExtractor (Readability4J), SubstackAuthInterceptor
+- **`data/remote/`** — RssFetcher (RSS-Parser wrapper), ArticleExtractor (Readability4J), UpdateChecker
 - **`data/repository/`** — FeedRepository, ArticleRepository, ReadLaterRepository, PreferencesRepository
 - **`di/`** — Hilt modules: AppModule (DB, DAOs, DataStore, WorkManager), NetworkModule (OkHttp, RssParser)
 - **`sync/`** — FeedSyncWorker, ReadLaterSyncWorker, SyncScheduler (WorkManager periodic + immediate)
 - **`ui/feed/`** — FeedScreen, FeedViewModel, ArticleListItem (article list with date grouping, filtering, pagination)
 - **`ui/reader/`** — ReaderScreen, ReaderViewModel, ArticleWebView (WebView with CSS variable injection)
 - **`ui/readlater/`** — ReadLaterScreen, ReadLaterViewModel, ReadLaterListItem
-- **`ui/settings/`** — SettingsScreen, SettingsViewModel, AuthSection, FeedManagementSection, ReadingPreferencesSection
+- **`ui/settings/`** — SettingsScreen, SettingsViewModel, FeedManagementSection, ReadingPreferencesSection, AppUpdateSection
 - **`ui/components/`** — EInkComponents, DateHeader, FilterBar (shared UI)
 - **`ui/navigation/`** — ReInkNavGraph, Screen sealed class
 - **`ui/theme/`** — E-ink optimized theme (grayscale, no ripples, bold typography)
@@ -59,8 +59,8 @@ Clean Architecture with MVVM. Single-module app (`app/`).
 ### Key Design Decisions
 
 - **E-ink first**: Grayscale colors, no ripple effects, bold fonts only, no animations
-- **Substack auth**: OkHttp interceptor adds `substack.sid` cookie to `*.substack.com` requests
-- **RSS content**: Paid Substack RSS feeds return full HTML in `content:encoded` when authenticated
+- **Paid content**: Only available through email ingestion; RSS always returns free preview
+- **Auto-update**: Checks GitHub Releases daily, auto-downloads APK, shows install banner
 - **Read-later**: Link taps in reader are intercepted and saved; Readability4J extracts clean content
 - **WebView reader**: `loadDataWithBaseURL("file:///android_asset/", ...)` with CSS variable injection from DataStore preferences
 - **Volume keys**: Mapped to page navigation on Feed screen (same pattern as CrosswordInk)
