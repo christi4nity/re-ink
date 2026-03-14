@@ -85,6 +85,15 @@ p, span, div, li, td, th, em, strong, b, i, u, s,
 }
 
 /* Embedded Substack post cards */
+.embed-card .embed-thumbnail {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    float: left;
+    margin: 0 0.8em 0.4em 0;
+}
+
 .embed-card .embed-title {
     margin: 0 0 0.3em;
     font-weight: bold;
@@ -94,14 +103,10 @@ p, span, div, li, td, th, em, strong, b, i, u, s,
     text-decoration: none;
 }
 
-.embed-card .embed-body {
-    margin: 0 0 0.4em;
-    color: #555555 !important;
-}
-
 .embed-card .embed-meta {
     font-size: 0.85em !important;
     color: #777777 !important;
+    clear: left;
 }
 
 body {

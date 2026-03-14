@@ -73,7 +73,7 @@ class SubstackEmailParser @Inject constructor() {
         }
 
         // Convert embedded Substack post cards into clean blockquotes
-        bodyMarkup.select(".embedded-post-wrap").forEach { embedWrap ->
+        bodyMarkup.select("[class*=digestPostEmbed], .embedded-post-wrap").forEach { embedWrap ->
             val clean = convertEmbeddedPost(embedWrap)
             embedWrap.replaceWith(Jsoup.parseBodyFragment(clean).body().child(0))
         }
@@ -141,13 +141,50 @@ class SubstackEmailParser @Inject constructor() {
 
     /**
      * Converts a Substack embedded post card into a clean blockquote.
+     * Handles both the modern digestPostEmbed format (deeply nested tables)
+     * and the older embedded-post-wrap format.
      */
     private fun convertEmbeddedPost(wrap: org.jsoup.nodes.Element): String {
-        val pubName = wrap.selectFirst(".embedded-post-publication-name")?.text()?.trim() ?: ""
-        val title = wrap.selectFirst(".embedded-post-title")?.text()?.trim() ?: ""
-        val url = wrap.selectFirst(".embedded-post-title")?.attr("href") ?: ""
-        val body = wrap.selectFirst(".embedded-post-body")?.text()?.trim() ?: ""
-        val meta = wrap.selectFirst(".embedded-post-meta")?.text()?.trim() ?: ""
+        val isDigestEmbed = wrap.className().contains("digestPostEmbed")
+
+        val title: String
+        val url: String
+        val author: String
+        val date: String
+        val thumbnailSrc: String?
+
+        if (isDigestEmbed) {
+            // Modern format: nested tables with pencraft classes
+            val titleEl = wrap.selectFirst("h4 a") ?: wrap.selectFirst("h4")
+            title = titleEl?.text()?.trim() ?: ""
+            url = titleEl?.attr("href") ?: ""
+
+            // Author is in the first meta div, date in the second
+            val metaDivs = wrap.select("[class*=meta-]")
+            author = metaDivs.firstOrNull()
+                ?.selectFirst("a")?.text()?.trim()
+                ?: metaDivs.firstOrNull()?.text()?.trim()?.removeSuffix("·")?.trim()
+                ?: ""
+            date = metaDivs.drop(1).firstOrNull { it.text().matches(Regex(".*\\d{4}.*")) }
+                ?.text()?.trim() ?: ""
+
+            // Thumbnail is the large image (not icons)
+            thumbnailSrc = wrap.select("img").firstOrNull { img ->
+                val width = img.attr("width").toIntOrNull() ?: 0
+                width >= 140 || img.className().contains("smSquare")
+            }?.attr("src")?.takeIf { it.isNotBlank() }
+        } else {
+            // Legacy .embedded-post-wrap format
+            title = wrap.selectFirst(".embedded-post-title")?.text()?.trim() ?: ""
+            url = wrap.selectFirst(".embedded-post-title")?.attr("href") ?: ""
+            author = wrap.selectFirst(".embedded-post-publication-name")?.text()?.trim() ?: ""
+            date = wrap.selectFirst(".embedded-post-meta")?.text()?.trim() ?: ""
+            thumbnailSrc = null
+        }
+
+        val thumbnailHtml = if (thumbnailSrc != null) {
+            """<img class="embed-thumbnail" src="$thumbnailSrc">"""
+        } else ""
 
         val titleHtml = if (url.isNotBlank() && title.isNotBlank()) {
             """<p class="embed-title"><a href="$url">$title</a></p>"""
@@ -155,19 +192,15 @@ class SubstackEmailParser @Inject constructor() {
             """<p class="embed-title">$title</p>"""
         } else ""
 
-        val bodyHtml = if (body.isNotBlank()) {
-            """<p class="embed-body">$body</p>"""
-        } else ""
-
-        val footerParts = listOf(pubName, meta).filter { it.isNotBlank() }
+        val footerParts = listOf(author, date).filter { it.isNotBlank() }
         val footerHtml = if (footerParts.isNotEmpty()) {
             """<footer class="embed-meta">${footerParts.joinToString(" · ")}</footer>"""
         } else ""
 
         return """
             <blockquote class="embed-card">
+                $thumbnailHtml
                 $titleHtml
-                $bodyHtml
                 $footerHtml
             </blockquote>
         """.trimIndent()
