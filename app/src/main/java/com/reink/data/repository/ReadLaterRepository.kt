@@ -26,14 +26,16 @@ class ReadLaterRepository @Inject constructor(
         val alreadyExists = readLaterDao.countByUrl(url) > 0
         if (alreadyExists) return -1
 
+        val now = System.currentTimeMillis()
         val item = ReadLaterEntity(
             url = url,
             title = "",
             contentHtml = "",
             sourceArticleId = sourceArticleId,
-            savedAt = System.currentTimeMillis(),
+            savedAt = now,
             fetchStatus = FetchStatus.PENDING.name,
             isRead = false,
+            modifiedAt = now,
         )
         return readLaterDao.insert(item)
     }

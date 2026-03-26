@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [FeedEntity::class, ArticleEntity::class, ReadLaterEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 abstract class ReInkDatabase : RoomDatabase() {
@@ -91,6 +91,55 @@ abstract class ReInkDatabase : RoomDatabase() {
                 db.execSQL("UPDATE feeds SET modifiedAt = $now")
                 db.execSQL("UPDATE articles SET modifiedAt = $now WHERE isRead = 1 OR isArchived = 1")
                 db.execSQL("UPDATE read_later SET modifiedAt = $now WHERE isRead = 1 OR isArchived = 1")
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    UPDATE articles
+                    SET feedId = (
+                        SELECT keep.id
+                        FROM feeds AS old
+                        JOIN feeds AS keep ON keep.url = old.url
+                        WHERE old.id = articles.feedId
+                        ORDER BY keep.isDeleted ASC, keep.modifiedAt DESC, keep.id DESC
+                        LIMIT 1
+                    )
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM feeds AS old
+                        JOIN feeds AS keep ON keep.url = old.url
+                        WHERE old.id = articles.feedId
+                          AND (
+                              keep.isDeleted < old.isDeleted OR
+                              (keep.isDeleted = old.isDeleted AND keep.modifiedAt > old.modifiedAt) OR
+                              (keep.isDeleted = old.isDeleted AND keep.modifiedAt = old.modifiedAt AND keep.id > old.id)
+                          )
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    DELETE FROM feeds
+                    WHERE id NOT IN (
+                        SELECT current.id
+                        FROM feeds AS current
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM feeds AS candidate
+                            WHERE candidate.url = current.url
+                              AND (
+                                  candidate.isDeleted < current.isDeleted OR
+                                  (candidate.isDeleted = current.isDeleted AND candidate.modifiedAt > current.modifiedAt) OR
+                                  (candidate.isDeleted = current.isDeleted AND candidate.modifiedAt = current.modifiedAt AND candidate.id > current.id)
+                              )
+                        )
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_feeds_url ON feeds(url)")
             }
         }
     }

@@ -1,10 +1,16 @@
 package com.reink.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.reink.data.model.Feed
 
-@Entity(tableName = "feeds")
+@Entity(
+    tableName = "feeds",
+    indices = [
+        Index(value = ["url"], unique = true),
+    ],
+)
 data class FeedEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,

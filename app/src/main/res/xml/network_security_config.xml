@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.0.0</domain>
-        <domain includeSubdomains="true">172.16.0.0</domain>
-        <domain includeSubdomains="true">192.168.0.0</domain>
-        <domain includeSubdomains="true">192.168.1.67</domain>
-        <domain includeSubdomains="true">100.107.68.44</domain>
-        <domain includeSubdomains="true">localhost</domain>
-    </domain-config>
+    <!-- Self-hosted sync servers may run on arbitrary LAN or Tailscale hosts.
+         SyncClient validates which HTTP hosts are allowed. -->
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

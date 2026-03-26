@@ -26,8 +26,31 @@ class FeedRepository @Inject constructor(
     suspend fun getById(id: Long): Feed? =
         feedDao.getById(id)?.toModel()
 
-    suspend fun add(feed: Feed): Long =
-        feedDao.insert(FeedEntity.fromModel(feed))
+    suspend fun add(feed: Feed): Long {
+        val existing = feedDao.getByUrl(feed.url)
+        if (existing != null) {
+            if (existing.isDeleted) {
+                val now = System.currentTimeMillis()
+                feedDao.updateByUrl(
+                    url = existing.url,
+                    title = feed.title,
+                    siteUrl = feed.siteUrl.ifBlank { existing.siteUrl },
+                    requiresAuth = feed.requiresAuth,
+                    sections = existing.enabledSectionSlugs,
+                    emailPattern = existing.emailSenderPattern,
+                    isDeleted = false,
+                    modifiedAt = now,
+                )
+            }
+            return existing.id
+        }
+
+        val now = System.currentTimeMillis()
+        val id = feedDao.insert(
+            FeedEntity.fromModel(feed).copy(modifiedAt = now),
+        )
+        return if (id != -1L) id else (feedDao.getByUrl(feed.url)?.id ?: -1L)
+    }
 
     suspend fun delete(id: Long) {
         feedDao.softDeleteById(id)
@@ -63,8 +86,27 @@ class FeedRepository @Inject constructor(
                 val siteUrl = pub.customDomain
                     ?.let { "https://$it" }
                     ?: "https://${pub.subdomain}.substack.com"
+                val existingByUrl = feedDao.getByUrl(feedUrl)
+                if (existingByUrl != null) {
+                    if (existingByUrl.isDeleted) {
+                        val now = System.currentTimeMillis()
+                        feedDao.updateByUrl(
+                            url = existingByUrl.url,
+                            title = pub.name ?: pub.subdomain,
+                            siteUrl = siteUrl,
+                            requiresAuth = true,
+                            sections = existingByUrl.enabledSectionSlugs,
+                            emailPattern = existingByUrl.emailSenderPattern,
+                            isDeleted = false,
+                            modifiedAt = now,
+                        )
+                        feedDao.updateAuth(existingByUrl.id, sub.token, pub.subdomain)
+                        imported++
+                    }
+                    continue
+                }
 
-                feedDao.insert(
+                val insertedId = feedDao.insert(
                     FeedEntity(
                         title = pub.name ?: pub.subdomain,
                         url = feedUrl,
@@ -73,9 +115,12 @@ class FeedRepository @Inject constructor(
                         addedAt = System.currentTimeMillis(),
                         authToken = sub.token,
                         substackSubdomain = pub.subdomain,
+                        modifiedAt = System.currentTimeMillis(),
                     ),
                 )
-                imported++
+                if (insertedId != -1L) {
+                    imported++
+                }
             }
 
             // Update tokens on all existing feeds (refresh tokens that may have changed)
@@ -115,7 +160,9 @@ class FeedRepository @Inject constructor(
                 val sections = sub.publication.sections
                 if (sections.isEmpty()) {
                     // Publication has no sections — clear any stale value
-                    feedDao.updateSections(feedEntity.id, null)
+                    if (feedEntity.enabledSectionSlugs != null) {
+                        feedDao.updateSections(feedEntity.id, null)
+                    }
                     continue
                 }
 
@@ -133,7 +180,9 @@ class FeedRepository @Inject constructor(
                 } else {
                     enabledSlugs.joinToString(",").ifEmpty { null }
                 }
-                feedDao.updateSections(feedEntity.id, slugsCsv)
+                if (feedEntity.enabledSectionSlugs != slugsCsv) {
+                    feedDao.updateSections(feedEntity.id, slugsCsv)
+                }
             }
 
             SyncResult(imported = imported, matched = matched)

@@ -2,6 +2,7 @@ package com.reink.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
@@ -17,7 +18,7 @@ interface FeedDao {
     @Query("SELECT * FROM feeds WHERE id = :id")
     suspend fun getById(id: Long): FeedEntity?
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(feed: FeedEntity): Long
 
     @Query("SELECT * FROM feeds WHERE isDeleted = 0 ORDER BY title ASC")
@@ -35,14 +36,14 @@ interface FeedDao {
     @Query("UPDATE feeds SET imageUrl = :imageUrl WHERE id = :id")
     suspend fun updateImageUrl(id: Long, imageUrl: String?)
 
-    @Query("SELECT substackSubdomain FROM feeds WHERE substackSubdomain IS NOT NULL")
+    @Query("SELECT substackSubdomain FROM feeds WHERE substackSubdomain IS NOT NULL AND isDeleted = 0")
     suspend fun getAllSubdomains(): List<String>
 
-    @Query("UPDATE feeds SET enabledSectionSlugs = :enabledSectionSlugs WHERE id = :id")
-    suspend fun updateSections(id: Long, enabledSectionSlugs: String?)
+    @Query("UPDATE feeds SET enabledSectionSlugs = :enabledSectionSlugs, modifiedAt = :now WHERE id = :id")
+    suspend fun updateSections(id: Long, enabledSectionSlugs: String?, now: Long = System.currentTimeMillis())
 
-    @Query("UPDATE feeds SET emailSenderPattern = :pattern WHERE id = :id")
-    suspend fun updateEmailSenderPattern(id: Long, pattern: String?)
+    @Query("UPDATE feeds SET emailSenderPattern = :pattern, modifiedAt = :now WHERE id = :id")
+    suspend fun updateEmailSenderPattern(id: Long, pattern: String?, now: Long = System.currentTimeMillis())
 
     @Query("SELECT * FROM feeds WHERE emailSenderPattern IS NOT NULL AND isDeleted = 0")
     suspend fun getFeedsWithEmailPatterns(): List<FeedEntity>

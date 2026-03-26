@@ -43,6 +43,7 @@ object AppModule {
                 ReInkDatabase.MIGRATION_7_8,
                 ReInkDatabase.MIGRATION_8_9,
                 ReInkDatabase.MIGRATION_9_10,
+                ReInkDatabase.MIGRATION_10_11,
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {

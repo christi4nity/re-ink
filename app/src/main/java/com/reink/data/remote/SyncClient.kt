@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -86,9 +87,10 @@ class SyncClient @Inject constructor(
         request: SyncRequest,
     ): Result<SyncResponse> = withContext(Dispatchers.IO) {
         runCatching {
+            val baseUrl = normalizeAndValidateBaseUrl(serverUrl)
             val body = json.encodeToString(SyncRequest.serializer(), request)
             val httpRequest = Request.Builder()
-                .url("$serverUrl/sync")
+                .url("$baseUrl/sync")
                 .header("X-API-Key", apiKey)
                 .post(body.toRequestBody(jsonMediaType))
                 .build()
@@ -103,14 +105,61 @@ class SyncClient @Inject constructor(
 
     suspend fun healthCheck(serverUrl: String): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
+            val baseUrl = normalizeAndValidateBaseUrl(serverUrl)
             val request = Request.Builder()
-                .url("$serverUrl/health")
+                .url("$baseUrl/health")
                 .get()
                 .build()
 
             httpClient.newCall(request).execute().use { response ->
                 check(response.isSuccessful) { "Health check failed: ${response.code}" }
             }
+        }
+    }
+
+    private fun normalizeAndValidateBaseUrl(serverUrl: String): String {
+        val trimmed = serverUrl.trim()
+        val httpUrl = trimmed.toHttpUrlOrNull()
+            ?: throw IllegalArgumentException("Invalid server URL")
+        if (httpUrl.query != null || httpUrl.fragment != null) {
+            throw IllegalArgumentException("Server URL must not include a query or fragment")
+        }
+        if (httpUrl.scheme == "http" && !isTrustedCleartextHost(httpUrl.host)) {
+            throw IllegalArgumentException(
+                "Plain HTTP is only allowed for localhost, private LAN, or Tailscale hosts",
+            )
+        }
+        return trimmed.trimEnd('/')
+    }
+
+    private fun isTrustedCleartextHost(host: String): Boolean {
+        val normalized = host.lowercase()
+        if (
+            normalized == "localhost" ||
+            normalized.endsWith(".local") ||
+            normalized.endsWith(".ts.net")
+        ) {
+            return true
+        }
+
+        if (normalized == "::1") return true
+        if (normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:")) {
+            return true
+        }
+
+        val parts = normalized.split('.')
+        if (parts.size != 4) return false
+        val octets = parts.map { it.toIntOrNull() ?: return false }
+        val first = octets[0]
+        val second = octets[1]
+
+        return when {
+            first == 10 -> true
+            first == 127 -> true
+            first == 192 && second == 168 -> true
+            first == 172 && second in 16..31 -> true
+            first == 100 && second in 64..127 -> true
+            else -> false
         }
     }
 }

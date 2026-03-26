@@ -25,14 +25,17 @@ class EmailSyncRepository @Inject constructor(
         val sinceTimestamp = preferencesRepository.getLastEmailSync()
             .takeIf { it > 0 }
             ?: (System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000) // Default: last 30 days
+        val syncStartedAt = System.currentTimeMillis()
 
         var upgraded = 0
         var inserted = 0
         var skipped = 0
         var error: Throwable? = null
+        var newestProcessedReceivedAt = sinceTimestamp
 
         emailContentSource.streamNewArticles(sinceTimestamp)
             .onEach { email ->
+                newestProcessedReceivedAt = maxOf(newestProcessedReceivedAt, email.receivedAt)
                 when (processEmail(email)) {
                     EmailAction.UPGRADED -> upgraded++
                     EmailAction.INSERTED -> inserted++
@@ -44,11 +47,15 @@ class EmailSyncRepository @Inject constructor(
             }
             .collect()
 
-        preferencesRepository.setLastEmailSync(System.currentTimeMillis())
-
         return if (error != null) {
             Result.failure(error!!)
         } else {
+            val checkpoint = if (newestProcessedReceivedAt > sinceTimestamp) {
+                newestProcessedReceivedAt
+            } else {
+                syncStartedAt
+            }
+            preferencesRepository.setLastEmailSync(checkpoint)
             Result.success(SyncResult(upgraded = upgraded, inserted = inserted, skipped = skipped))
         }
     }
@@ -214,6 +221,7 @@ class EmailSyncRepository @Inject constructor(
                     requiresAuth = false,
                     addedAt = System.currentTimeMillis(),
                     emailSenderPattern = senderLocal.ifBlank { null },
+                    modifiedAt = System.currentTimeMillis(),
                 ),
             )
             // OnConflictStrategy.IGNORE returns -1 if URL already exists
@@ -248,6 +256,7 @@ class EmailSyncRepository @Inject constructor(
                 requiresAuth = false,
                 addedAt = System.currentTimeMillis(),
                 emailSenderPattern = senderLocal.ifBlank { null },
+                modifiedAt = System.currentTimeMillis(),
             ),
         )
         return if (id != -1L) feedDao.getById(id)!! else feedDao.getByUrl(feedUrl)!!
