@@ -218,13 +218,12 @@ class SettingsViewModel @Inject constructor(
         initialValue = SettingsUiState(),
     )
 
-    fun addFeed(title: String, url: String, requiresAuth: Boolean) {
+    fun addFeed(title: String, url: String) {
         viewModelScope.launch {
             feedRepository.add(
                 Feed(
                     title = title,
                     url = url,
-                    requiresAuth = requiresAuth,
                 ),
             )
             showAddFeedDialog.value = false

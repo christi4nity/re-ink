@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,7 +32,7 @@ fun FeedManagementSection(
     showAddDialog: Boolean,
     onShowAddDialog: () -> Unit,
     onDismissAddDialog: () -> Unit,
-    onAddFeed: (title: String, url: String, requiresAuth: Boolean) -> Unit,
+    onAddFeed: (title: String, url: String) -> Unit,
     onDeleteFeed: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -127,11 +125,10 @@ private fun FeedRow(
 @Composable
 private fun AddFeedDialog(
     onDismiss: () -> Unit,
-    onConfirm: (title: String, url: String, requiresAuth: Boolean) -> Unit,
+    onConfirm: (title: String, url: String) -> Unit,
 ) {
     var title by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
-    var requiresAuth by remember { mutableStateOf(true) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = MaterialTheme.colorScheme.onSurface,
@@ -160,29 +157,11 @@ private fun AddFeedDialog(
                     singleLine = true,
                     colors = textFieldColors,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Checkbox(
-                        checked = requiresAuth,
-                        onCheckedChange = { requiresAuth = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.onSurface,
-                            uncheckedColor = MaterialTheme.colorScheme.outline,
-                            checkmarkColor = MaterialTheme.colorScheme.surface,
-                        ),
-                    )
-                    Text(
-                        text = "Requires Substack authentication",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(title, url, requiresAuth) },
+                onClick = { onConfirm(title, url) },
                 enabled = title.isNotBlank() && url.isNotBlank(),
             ) {
                 Text(

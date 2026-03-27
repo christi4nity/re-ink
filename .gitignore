@@ -23,5 +23,8 @@ local.properties
 # Internal docs (plans, handoffs)
 docs/
 
+# Development context
+CLAUDE.md
+
 # Sync server binary
 sync-server/reink-sync

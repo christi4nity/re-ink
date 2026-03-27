@@ -139,8 +139,8 @@ fun SettingsScreen(
                     showAddDialog = state.showAddFeedDialog,
                     onShowAddDialog = { viewModel.showAddFeedDialog() },
                     onDismissAddDialog = { viewModel.dismissAddFeedDialog() },
-                    onAddFeed = { title, url, requiresAuth ->
-                        viewModel.addFeed(title, url, requiresAuth)
+                    onAddFeed = { title, url ->
+                        viewModel.addFeed(title, url)
                     },
                     onDeleteFeed = { viewModel.deleteFeed(it) },
                 )
