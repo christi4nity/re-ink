@@ -22,8 +22,8 @@ android {
         applicationId = "com.reink"
         minSdk = 28
         targetSdk = 35
-        versionCode = (findProperty("versionCode") as? String)?.toIntOrNull() ?: 9999
-        versionName = (findProperty("versionName") as? String) ?: "1.2.1"
+        versionCode = (findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+        versionName = (findProperty("versionName") as? String) ?: "1.2.2"
     }
 
     signingConfigs {

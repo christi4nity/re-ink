@@ -33,7 +33,11 @@ jobs:
         id: version
         env:
           REF_NAME: ${{ github.ref_name }}
-        run: echo "name=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION="${REF_NAME#v}"
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          echo "code=$(( ${major:-0} * 10000 + ${minor:-0} * 100 + ${patch:-0} ))" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
         env:
@@ -42,7 +46,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
-          VERSION_CODE: ${{ github.run_number }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           ./gradlew assembleRelease \
             -PversionName="$VERSION_NAME" \
