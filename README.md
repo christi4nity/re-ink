@@ -2,7 +2,7 @@
 
 An e-ink optimized Substack reader for Android.
 
-Built for Boox e-ink devices. A personal project published under GPL v3 for anyone who finds it useful.
+Built for Android e-ink devices (Boox, Bigme, Dasung, etc.). A personal project published under GPL v3 for anyone who finds it useful.
 
 ## Install
 
@@ -14,7 +14,7 @@ Grab the latest APK from [GitHub Releases](https://github.com/christi4nity/re-in
 
 ### Adding feeds
 
-1. Open **Settings** (bottom nav)
+1. Open **Settings** (gear icon in the top bar)
 2. Under **Feeds**, tap **Add Feed**
 3. Enter a title, RSS URL, and whether it requires Substack authentication
 4. Tap **Add**
@@ -37,7 +37,7 @@ The only way to get full paid Substack content into re:ink is through email. RSS
 1. **Create a dedicated email** (or use a folder/alias on an existing account)
 2. **Subscribe** to your Substack publications with that email
 3. In **Settings > Email Inbox**, tap **Set up email inbox**
-4. Choose a preset (**Gmail** or **Fastmail**) or enter IMAP details manually:
+4. Choose a preset (**Gmail**) or enter IMAP details manually:
    - IMAP server (e.g., `imap.gmail.com`)
    - Port (default: `993`, SSL)
    - Email address
@@ -45,9 +45,7 @@ The only way to get full paid Substack content into re:ink is through email. RSS
    - Folder (default: `INBOX`)
 5. Tap **Test & Save** — the app verifies the connection
 
-**App passwords:**
-- **Gmail:** [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (requires 2FA enabled)
-- **Fastmail:** Settings > Password & Security > App passwords
+**App passwords (Gmail):** [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (requires 2FA enabled). Any IMAP provider works — just enter the server details manually.
 
 Credentials are stored locally using Android's EncryptedSharedPreferences (AES-256-GCM). They are never sent anywhere except directly to your IMAP server.
 
@@ -271,7 +269,7 @@ The app checks for updates from GitHub Releases every 24 hours.
 When an update is found:
 1. The APK is downloaded automatically in the background
 2. A notification appears: "Update ready"
-3. A banner shows at the top of the Home screen: "v1.1.0 ready to install"
+3. A banner shows at the top of the Home screen: "Update ready to install"
 4. Tap the banner (or notification) to trigger the system install dialog
 
 You can also check manually in **Settings > App Version > Check for updates**.
@@ -314,8 +312,8 @@ JAVA_HOME="/path/to/jdk17" ./gradlew installDebug
 Release APKs are built automatically by GitHub Actions when a version tag is pushed:
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.x.x
+git push origin v1.x.x
 ```
 
 This triggers a workflow that builds a signed APK and publishes it as a GitHub Release.
