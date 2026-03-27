@@ -4,6 +4,12 @@ A Substack reader built for e-ink. Full paid articles, clean typography, no dist
 
 Works on any Android e-ink device (Boox, Bigme, Dasung, etc.). Published under GPL v3.
 
+<p align="center">
+  <img src="screenshots/feed.png" width="270" alt="Feed list" />
+  <img src="screenshots/reader-article.png" width="270" alt="Article reader" />
+  <img src="screenshots/reader-chart.png" width="270" alt="Article with chart" />
+</p>
+
 ## Install
 
 Grab the latest APK from [GitHub Releases](https://github.com/christi4nity/re-ink/releases/latest) and sideload it. The app checks for updates automatically and will prompt you when a new version is available.
