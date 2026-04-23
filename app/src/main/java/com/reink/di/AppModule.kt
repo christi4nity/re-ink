@@ -2,8 +2,11 @@ package com.reink.di
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -19,7 +22,16 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "reink_prefs")
+// Self-heal on a corrupted prefs file (e.g. after an OS/firmware update truncates
+// the protobuf). Without this, DataStore surfaces CorruptionException on first read
+// and crashes the app on launch.
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "reink_prefs",
+    corruptionHandler = ReplaceFileCorruptionHandler {
+        Log.w("ReInk", "DataStore preferences corrupted, resetting", it)
+        emptyPreferences()
+    },
+)
 
 @Module
 @InstallIn(SingletonComponent::class)
