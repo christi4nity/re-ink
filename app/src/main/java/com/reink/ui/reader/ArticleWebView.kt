@@ -44,7 +44,6 @@ fun ArticleWebView(
 
     val currentOnLinkTapped by rememberUpdatedState(onLinkTapped)
     val currentOnPageCountChanged by rememberUpdatedState(onPageCountChanged)
-    val currentPageState by rememberUpdatedState(currentPage)
     val currentIsPaginated by rememberUpdatedState(isPaginated)
     val currentOnPageTurn by rememberUpdatedState(onPageTurn)
     val currentOnContentTapped by rememberUpdatedState(onContentTapped)
@@ -71,7 +70,7 @@ fun ArticleWebView(
         val wv = webViewRef ?: return@LaunchedEffect
         if (isPaginated && wrappedHtml == lastLoadedHtml) {
             wv.evaluateJavascript(
-                "(function(){var c=document.getElementById('col-wrapper')||document.body;if(c)c.scrollLeft=${currentPage}*document.documentElement.clientWidth;})();",
+                "(function(){if(window.ReInkScrollToPage){window.ReInkScrollToPage(${currentPage});return;}var c=document.getElementById('col-wrapper')||document.body;if(c)c.scrollLeft=${currentPage}*document.documentElement.clientWidth;})();",
                 null,
             )
         }
@@ -217,7 +216,7 @@ fun ArticleWebView(
  *   column-gap   = 2*margin + 2*safeInset       (right + left spacing between pages)
  *   body padding = margin left/right + fitted top/bottom space
  *   wrapper safe padding lets glyphs overhang without clipping at each column edge
- *   Page stride  = column-width + gap = vw
+ *   Page stride  = measured column-width + measured gap (avoids cumulative drift)
  *
  * Key: body handles outer spacing; #col-wrapper is the column container.
  * We page by setting scrollLeft on #col-wrapper.
@@ -297,6 +296,24 @@ private const val PAGINATION_SETUP_JS = """
         c.style.columnGap = colGap + 'px';
         c.style.webkitColumnGap = colGap + 'px';
     }
+
+    function getPageStride() {
+        var cs = getComputedStyle(c);
+        var measuredColumnWidth = parseFloat(cs.columnWidth || cs.webkitColumnWidth);
+        var measuredColumnGap = parseFloat(cs.columnGap || cs.webkitColumnGap);
+        if (!isFinite(measuredColumnWidth) || measuredColumnWidth <= 0) {
+            measuredColumnWidth = colWidth;
+        }
+        if (!isFinite(measuredColumnGap) || measuredColumnGap < 0) {
+            measuredColumnGap = colGap;
+        }
+        return Math.max(1, measuredColumnWidth + measuredColumnGap);
+    }
+
+    window.ReInkScrollToPage = function(page) {
+        var stride = getPageStride();
+        c.scrollLeft = Math.round(page * stride);
+    };
 
     function applyVerticalPadding(topPad, bottomPad) {
         b.style.paddingTop = topPad + 'px';
@@ -397,8 +414,9 @@ private const val PAGINATION_SETUP_JS = """
         syncViewportMetrics();
         applyVerticalPadding(basePad, basePad + bottomSafetyInset);
         rebalanceVerticalPadding();
+        var stride = getPageStride();
         var sw = c.scrollWidth;
-        var pageCount = Math.max(1, Math.round(sw / vw));
+        var pageCount = Math.max(1, Math.floor(Math.max(0, sw - 1) / stride) + 1);
         if (pageCount !== lastReportedPageCount) {
             lastReportedPageCount = pageCount;
             ReInk.reportPageCount(pageCount);
