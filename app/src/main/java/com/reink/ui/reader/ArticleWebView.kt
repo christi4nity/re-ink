@@ -212,10 +212,10 @@ fun ArticleWebView(
  * Pagination setup JS. Runs in onPageFinished.
  *
  * Column math:
- *   column-width = vw - 2*margin - 2*safeInset  (content per page)
- *   column-gap   = 2*margin + 2*safeInset       (right + left spacing between pages)
- *   body padding = margin left/right + fitted top/bottom space
- *   wrapper safe padding lets glyphs overhang without clipping at each column edge
+ *   effective margin = user margin + glyph safety inset
+ *   column-width = vw - 2*effective margin  (content per page)
+ *   column-gap   = 2*effective margin       (right + left spacing between pages)
+ *   body padding = effective margin left/right + fitted top/bottom space
  *   Page stride  = measured column-width + measured gap (avoids cumulative drift)
  *
  * Key: body handles outer spacing; #col-wrapper is the column container.
@@ -247,14 +247,15 @@ private const val PAGINATION_SETUP_JS = """
     ) || 0;
     var basePad = Math.max(0, extraVerticalInset) + userVerticalMargin;
     var bottomSafetyInset = Math.max(0, progressBarHeight - basePad);
-    var margin = parseInt(
+    var userMargin = parseInt(
         getComputedStyle(h).getPropertyValue('--margin-horizontal')
     ) || 16;
     var glyphSafetyInset = parseFloat(
         getComputedStyle(h).getPropertyValue('--glyph-safe-inset')
     ) || 8;
-    var colWidth = Math.max(1, vw - 2 * margin - 2 * glyphSafetyInset);
-    var colGap = 2 * margin + 2 * glyphSafetyInset;
+    var margin = userMargin + glyphSafetyInset;
+    var colWidth = Math.max(1, vw - 2 * margin);
+    var colGap = 2 * margin;
     var contentHeight = 0;
 
     b.style.margin = '0';
@@ -273,10 +274,7 @@ private const val PAGINATION_SETUP_JS = """
     c.style.width = '100%';
     c.style.boxSizing = 'border-box';
     c.style.margin = '0';
-    c.style.paddingTop = '0';
-    c.style.paddingBottom = '0';
-    c.style.paddingLeft = glyphSafetyInset + 'px';
-    c.style.paddingRight = glyphSafetyInset + 'px';
+    c.style.padding = '0';
     c.style.columnFill = 'auto';
     c.style.webkitColumnFill = 'auto';
     c.style.overflow = 'hidden';
@@ -289,8 +287,8 @@ private const val PAGINATION_SETUP_JS = """
     function syncViewportMetrics() {
         vh = h.clientHeight;
         vw = h.clientWidth;
-        colWidth = Math.max(1, vw - 2 * margin - 2 * glyphSafetyInset);
-        colGap = 2 * margin + 2 * glyphSafetyInset;
+        colWidth = Math.max(1, vw - 2 * margin);
+        colGap = 2 * margin;
         c.style.columnWidth = colWidth + 'px';
         c.style.webkitColumnWidth = colWidth + 'px';
         c.style.columnGap = colGap + 'px';
@@ -331,7 +329,7 @@ private const val PAGINATION_SETUP_JS = """
 
     function measureFirstColumnGaps() {
         var cRect = c.getBoundingClientRect();
-        var colLeft = cRect.left + glyphSafetyInset;
+        var colLeft = cRect.left;
         var colRight = colLeft + colWidth;
         var colTop = cRect.top;
         var colBottom = colTop + contentHeight;
@@ -488,7 +486,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
         #col-wrapper {
             box-sizing: border-box;
             margin: 0;
-            padding: 0 var(--glyph-safe-inset);
+            padding: 0;
             -webkit-column-fill: auto;
             column-fill: auto;
         }
