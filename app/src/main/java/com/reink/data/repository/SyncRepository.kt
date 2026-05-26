@@ -133,11 +133,16 @@ class SyncRepository @Inject constructor(
         for (article in articles) {
             val existing = articleDao.getByUrl(article.url) ?: continue
             if (article.modifiedAt > existing.modifiedAt) {
+                val existingDeleteStateAt = existing.deletedAt
+                    ?: if (existing.isDeleted) existing.modifiedAt else 0L
+                val incomingDeleteIsNewer = article.isDeletedAt > existingDeleteStateAt
                 articleDao.updateStateByUrl(
                     url = article.url,
                     isRead = article.isRead,
                     isArchived = article.isArchived,
                     archivedAt = article.archivedAt,
+                    isDeleted = if (incomingDeleteIsNewer) article.isDeleted else existing.isDeleted,
+                    deletedAt = if (incomingDeleteIsNewer) article.deletedAt else existing.deletedAt,
                     modifiedAt = article.modifiedAt,
                 )
             }
@@ -149,11 +154,16 @@ class SyncRepository @Inject constructor(
             val existing = readLaterDao.getByUrl(item.url)
             if (existing != null) {
                 if (item.modifiedAt > existing.modifiedAt) {
+                    val existingDeleteStateAt = existing.deletedAt
+                        ?: if (existing.isDeleted) existing.modifiedAt else 0L
+                    val incomingDeleteIsNewer = item.isDeletedAt > existingDeleteStateAt
                     readLaterDao.updateStateByUrl(
                         url = item.url,
                         isRead = item.isRead,
                         isArchived = item.isArchived,
                         archivedAt = item.archivedAt,
+                        isDeleted = if (incomingDeleteIsNewer) item.isDeleted else existing.isDeleted,
+                        deletedAt = if (incomingDeleteIsNewer) item.deletedAt else existing.deletedAt,
                         savedAt = item.savedAt,
                         modifiedAt = item.modifiedAt,
                     )
@@ -170,6 +180,8 @@ class SyncRepository @Inject constructor(
                         isRead = item.isRead,
                         isArchived = item.isArchived,
                         archivedAt = item.archivedAt,
+                        isDeleted = item.isDeleted,
+                        deletedAt = item.deletedAt,
                         modifiedAt = item.modifiedAt,
                     ),
                 )
@@ -208,6 +220,8 @@ class SyncRepository @Inject constructor(
         modifiedAt = modifiedAt,
     )
 
+    // deletedAt is also used as the delete-state timestamp when isDeleted=false
+    // after an explicit restore, allowing undeletes to win during sync merge.
     private fun com.reink.data.local.ArticleEntity.toArticleSyncDto() = ArticleStateSyncDto(
         url = url,
         isRead = isRead,
@@ -215,6 +229,9 @@ class SyncRepository @Inject constructor(
         isArchived = isArchived,
         isArchivedAt = modifiedAt,
         archivedAt = archivedAt,
+        isDeleted = isDeleted,
+        isDeletedAt = if (isDeleted || deletedAt != null) deletedAt ?: modifiedAt else 0L,
+        deletedAt = deletedAt,
         modifiedAt = modifiedAt,
     )
 
@@ -225,6 +242,9 @@ class SyncRepository @Inject constructor(
         isArchived = isArchived,
         isArchivedAt = modifiedAt,
         archivedAt = archivedAt,
+        isDeleted = isDeleted,
+        isDeletedAt = if (isDeleted || deletedAt != null) deletedAt ?: modifiedAt else 0L,
+        deletedAt = deletedAt,
         savedAt = savedAt,
         modifiedAt = modifiedAt,
     )

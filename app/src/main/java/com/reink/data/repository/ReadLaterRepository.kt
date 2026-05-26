@@ -23,8 +23,14 @@ class ReadLaterRepository @Inject constructor(
         readLaterDao.getById(id)?.toModel()
 
     suspend fun save(url: String, sourceArticleId: Long? = null): Long {
-        val alreadyExists = readLaterDao.countByUrl(url) > 0
-        if (alreadyExists) return -1
+        val existing = readLaterDao.getByUrl(url)
+        if (existing != null) {
+            if (existing.isDeleted) {
+                readLaterDao.restoreByUrl(url)
+                return existing.id
+            }
+            return -1
+        }
 
         val now = System.currentTimeMillis()
         val item = ReadLaterEntity(

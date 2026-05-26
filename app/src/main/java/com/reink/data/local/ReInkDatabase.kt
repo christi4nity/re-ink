@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [FeedEntity::class, ArticleEntity::class, ReadLaterEntity::class],
-    version = 11,
+    version = 12,
     exportSchema = false,
 )
 abstract class ReInkDatabase : RoomDatabase() {
@@ -140,6 +140,15 @@ abstract class ReInkDatabase : RoomDatabase() {
                     """.trimIndent(),
                 )
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_feeds_url ON feeds(url)")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE articles ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE articles ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE read_later ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE read_later ADD COLUMN deletedAt INTEGER DEFAULT NULL")
             }
         }
     }

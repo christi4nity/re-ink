@@ -38,25 +38,30 @@ func MergeFeeds(db *sql.DB, feeds []FeedSync) error {
 	return nil
 }
 
-// MergeArticles applies per-field timestamp merge for article read/archive state.
+// MergeArticles applies per-field timestamp merge for article read/archive/delete state.
 func MergeArticles(db *sql.DB, articles []ArticleStateSync) error {
 	for _, a := range articles {
 		var existing ArticleStateSync
 		var archivedAt sql.NullInt64
+		var deletedAt sql.NullInt64
 		err := db.QueryRow(
-			`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, modified_at
+			`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, is_deleted, is_deleted_at, deleted_at, modified_at
 			 FROM article_states WHERE url = ?`, a.URL,
-		).Scan(&existing.URL, &existing.IsRead, &existing.IsReadAt, &existing.IsArchived, &existing.IsArchivedAt, &archivedAt, &existing.ModifiedAt)
+		).Scan(&existing.URL, &existing.IsRead, &existing.IsReadAt, &existing.IsArchived, &existing.IsArchivedAt, &archivedAt, &existing.IsDeleted, &existing.IsDeletedAt, &deletedAt, &existing.ModifiedAt)
 
 		if err == sql.ErrNoRows {
 			var archVal interface{} = nil
 			if a.ArchivedAt != nil {
 				archVal = *a.ArchivedAt
 			}
+			var deleteVal interface{} = nil
+			if a.DeletedAt != nil {
+				deleteVal = *a.DeletedAt
+			}
 			_, err = db.Exec(
-				`INSERT INTO article_states (url, is_read, is_read_at, is_archived, is_archived_at, archived_at, modified_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				a.URL, a.IsRead, a.IsReadAt, a.IsArchived, a.IsArchivedAt, archVal, a.ModifiedAt)
+				`INSERT INTO article_states (url, is_read, is_read_at, is_archived, is_archived_at, archived_at, is_deleted, is_deleted_at, deleted_at, modified_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				a.URL, a.IsRead, a.IsReadAt, a.IsArchived, a.IsArchivedAt, archVal, a.IsDeleted, a.IsDeletedAt, deleteVal, a.ModifiedAt)
 			if err != nil {
 				return err
 			}
@@ -66,7 +71,7 @@ func MergeArticles(db *sql.DB, articles []ArticleStateSync) error {
 			return err
 		}
 
-		// Per-field merge: each field wins if its timestamp is newer
+		// Per-field merge: each field wins if its timestamp is newer.
 		isRead := existing.IsRead
 		isReadAt := existing.IsReadAt
 		if a.IsReadAt > existing.IsReadAt {
@@ -86,6 +91,18 @@ func MergeArticles(db *sql.DB, articles []ArticleStateSync) error {
 			existingArchivedAt = a.ArchivedAt
 		}
 
+		isDeleted := existing.IsDeleted
+		isDeletedAt := existing.IsDeletedAt
+		existingDeletedAt := existing.DeletedAt
+		if deletedAt.Valid {
+			existingDeletedAt = &deletedAt.Int64
+		}
+		if a.IsDeletedAt > existing.IsDeletedAt {
+			isDeleted = a.IsDeleted
+			isDeletedAt = a.IsDeletedAt
+			existingDeletedAt = a.DeletedAt
+		}
+
 		modifiedAt := existing.ModifiedAt
 		if a.ModifiedAt > existing.ModifiedAt {
 			modifiedAt = a.ModifiedAt
@@ -95,11 +112,15 @@ func MergeArticles(db *sql.DB, articles []ArticleStateSync) error {
 		if existingArchivedAt != nil {
 			archVal = *existingArchivedAt
 		}
+		var deleteVal interface{} = nil
+		if existingDeletedAt != nil {
+			deleteVal = *existingDeletedAt
+		}
 
 		_, err = db.Exec(
-			`UPDATE article_states SET is_read = ?, is_read_at = ?, is_archived = ?, is_archived_at = ?, archived_at = ?, modified_at = ?
+			`UPDATE article_states SET is_read = ?, is_read_at = ?, is_archived = ?, is_archived_at = ?, archived_at = ?, is_deleted = ?, is_deleted_at = ?, deleted_at = ?, modified_at = ?
 			 WHERE url = ?`,
-			isRead, isReadAt, isArchived, isArchivedAt, archVal, modifiedAt, a.URL)
+			isRead, isReadAt, isArchived, isArchivedAt, archVal, isDeleted, isDeletedAt, deleteVal, modifiedAt, a.URL)
 		if err != nil {
 			return err
 		}
@@ -112,20 +133,25 @@ func MergeReadLater(db *sql.DB, items []ReadLaterStateSync) error {
 	for _, r := range items {
 		var existing ReadLaterStateSync
 		var archivedAt sql.NullInt64
+		var deletedAt sql.NullInt64
 		err := db.QueryRow(
-			`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, saved_at, modified_at
+			`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, is_deleted, is_deleted_at, deleted_at, saved_at, modified_at
 			 FROM read_later_states WHERE url = ?`, r.URL,
-		).Scan(&existing.URL, &existing.IsRead, &existing.IsReadAt, &existing.IsArchived, &existing.IsArchivedAt, &archivedAt, &existing.SavedAt, &existing.ModifiedAt)
+		).Scan(&existing.URL, &existing.IsRead, &existing.IsReadAt, &existing.IsArchived, &existing.IsArchivedAt, &archivedAt, &existing.IsDeleted, &existing.IsDeletedAt, &deletedAt, &existing.SavedAt, &existing.ModifiedAt)
 
 		if err == sql.ErrNoRows {
 			var archVal interface{} = nil
 			if r.ArchivedAt != nil {
 				archVal = *r.ArchivedAt
 			}
+			var deleteVal interface{} = nil
+			if r.DeletedAt != nil {
+				deleteVal = *r.DeletedAt
+			}
 			_, err = db.Exec(
-				`INSERT INTO read_later_states (url, is_read, is_read_at, is_archived, is_archived_at, archived_at, saved_at, modified_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-				r.URL, r.IsRead, r.IsReadAt, r.IsArchived, r.IsArchivedAt, archVal, r.SavedAt, r.ModifiedAt)
+				`INSERT INTO read_later_states (url, is_read, is_read_at, is_archived, is_archived_at, archived_at, is_deleted, is_deleted_at, deleted_at, saved_at, modified_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				r.URL, r.IsRead, r.IsReadAt, r.IsArchived, r.IsArchivedAt, archVal, r.IsDeleted, r.IsDeletedAt, deleteVal, r.SavedAt, r.ModifiedAt)
 			if err != nil {
 				return err
 			}
@@ -154,6 +180,18 @@ func MergeReadLater(db *sql.DB, items []ReadLaterStateSync) error {
 			existingArchivedAt = r.ArchivedAt
 		}
 
+		isDeleted := existing.IsDeleted
+		isDeletedAt := existing.IsDeletedAt
+		existingDeletedAt := existing.DeletedAt
+		if deletedAt.Valid {
+			existingDeletedAt = &deletedAt.Int64
+		}
+		if r.IsDeletedAt > existing.IsDeletedAt {
+			isDeleted = r.IsDeleted
+			isDeletedAt = r.IsDeletedAt
+			existingDeletedAt = r.DeletedAt
+		}
+
 		savedAt := existing.SavedAt
 		if r.SavedAt > existing.SavedAt {
 			savedAt = r.SavedAt
@@ -168,11 +206,15 @@ func MergeReadLater(db *sql.DB, items []ReadLaterStateSync) error {
 		if existingArchivedAt != nil {
 			archVal = *existingArchivedAt
 		}
+		var deleteVal interface{} = nil
+		if existingDeletedAt != nil {
+			deleteVal = *existingDeletedAt
+		}
 
 		_, err = db.Exec(
-			`UPDATE read_later_states SET is_read = ?, is_read_at = ?, is_archived = ?, is_archived_at = ?, archived_at = ?, saved_at = ?, modified_at = ?
+			`UPDATE read_later_states SET is_read = ?, is_read_at = ?, is_archived = ?, is_archived_at = ?, archived_at = ?, is_deleted = ?, is_deleted_at = ?, deleted_at = ?, saved_at = ?, modified_at = ?
 			 WHERE url = ?`,
-			isRead, isReadAt, isArchived, isArchivedAt, archVal, savedAt, modifiedAt, r.URL)
+			isRead, isReadAt, isArchived, isArchivedAt, archVal, isDeleted, isDeletedAt, deleteVal, savedAt, modifiedAt, r.URL)
 		if err != nil {
 			return err
 		}

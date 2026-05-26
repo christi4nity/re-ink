@@ -20,6 +20,8 @@ data class ReadLaterEntity(
     val excerpt: String? = null,
     val isArchived: Boolean = false,
     val archivedAt: Long? = null,
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null,
     val modifiedAt: Long = 0,
 ) {
     fun toModel(): ReadLaterItem = ReadLaterItem(

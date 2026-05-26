@@ -228,7 +228,7 @@ private const val PAGINATION_SETUP_JS = """
     h.style.overflow = 'hidden';
     h.style.margin = '0';
     h.style.padding = '0';
-    h.style.backgroundColor = 'red';
+    h.style.backgroundColor = '#ffffff';
 
     var b = document.body;
     var c = document.getElementById('col-wrapper');
@@ -250,8 +250,11 @@ private const val PAGINATION_SETUP_JS = """
     var margin = parseInt(
         getComputedStyle(h).getPropertyValue('--margin-horizontal')
     ) || 16;
-    var colWidth = vw - 2 * margin;
-    var colGap = 2 * margin;
+    var glyphSafetyInset = parseFloat(
+        getComputedStyle(h).getPropertyValue('--glyph-safe-inset')
+    ) || 2;
+    var colWidth = Math.max(1, vw - 2 * margin - glyphSafetyInset);
+    var colGap = 2 * margin + glyphSafetyInset;
     var contentHeight = 0;
 
     b.style.margin = '0';
@@ -264,7 +267,7 @@ private const val PAGINATION_SETUP_JS = """
     b.style.width = 'auto';
     b.style.boxSizing = 'border-box';
     b.style.paddingRight = margin + 'px';
-    b.style.paddingLeft = margin + 'px';
+    b.style.paddingLeft = (margin + glyphSafetyInset) + 'px';
     b.style.overflow = 'hidden';
 
     c.style.width = '100%';
@@ -282,8 +285,8 @@ private const val PAGINATION_SETUP_JS = """
     function syncViewportMetrics() {
         vh = h.clientHeight;
         vw = h.clientWidth;
-        colWidth = vw - 2 * margin;
-        colGap = 2 * margin;
+        colWidth = Math.max(1, vw - 2 * margin - glyphSafetyInset);
+        colGap = 2 * margin + glyphSafetyInset;
         c.style.columnWidth = colWidth + 'px';
         c.style.webkitColumnWidth = colWidth + 'px';
         c.style.columnGap = colGap + 'px';
@@ -439,6 +442,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
             --margin-horizontal: ${prefs.marginHorizontal}px;
             --margin-vertical: ${prefs.marginVertical}px;
             --text-align: ${prefs.textAlign};
+            --glyph-safe-inset: 2px;
             --reader-overlay-height: 56px;
         }
     """.trimIndent()

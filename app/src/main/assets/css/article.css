@@ -5,6 +5,9 @@
     --margin-horizontal: 16px;
     --margin-vertical: 12px;
     --text-align: left;
+    --glyph-safe-inset: 2px;
+    --text-weight: 500;
+    --text-stroke-width: 0.15px;
 }
 
 @font-face {
@@ -113,12 +116,14 @@ body {
     font-family: var(--font-family);
     font-size: var(--font-size) !important;
     line-height: var(--line-height) !important;
+    font-weight: var(--text-weight);
     text-align: var(--text-align);
     margin: 0;
-    padding: var(--margin-vertical) var(--margin-horizontal);
+    padding: var(--margin-vertical) var(--margin-horizontal) var(--margin-vertical) calc(var(--margin-horizontal) + var(--glyph-safe-inset));
     color: #000000;
     background: #ffffff;
     -webkit-font-smoothing: antialiased;
+    -webkit-text-stroke: var(--text-stroke-width) currentColor;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }

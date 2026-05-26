@@ -53,6 +53,9 @@ data class ArticleStateSyncDto(
     val isArchived: Boolean = false,
     val isArchivedAt: Long = 0,
     val archivedAt: Long? = null,
+    val isDeleted: Boolean = false,
+    val isDeletedAt: Long = 0,
+    val deletedAt: Long? = null,
     val modifiedAt: Long = 0,
 )
 
@@ -64,6 +67,9 @@ data class ReadLaterStateSyncDto(
     val isArchived: Boolean = false,
     val isArchivedAt: Long = 0,
     val archivedAt: Long? = null,
+    val isDeleted: Boolean = false,
+    val isDeletedAt: Long = 0,
+    val deletedAt: Long? = null,
     val savedAt: Long = 0,
     val modifiedAt: Long = 0,
 )

@@ -52,6 +52,9 @@ func migrate(db *sql.DB) {
 			is_archived INTEGER NOT NULL DEFAULT 0,
 			is_archived_at INTEGER NOT NULL DEFAULT 0,
 			archived_at INTEGER,
+			is_deleted INTEGER NOT NULL DEFAULT 0,
+			is_deleted_at INTEGER NOT NULL DEFAULT 0,
+			deleted_at INTEGER,
 			modified_at INTEGER NOT NULL DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS read_later_states (
@@ -61,6 +64,9 @@ func migrate(db *sql.DB) {
 			is_archived INTEGER NOT NULL DEFAULT 0,
 			is_archived_at INTEGER NOT NULL DEFAULT 0,
 			archived_at INTEGER,
+			is_deleted INTEGER NOT NULL DEFAULT 0,
+			is_deleted_at INTEGER NOT NULL DEFAULT 0,
+			deleted_at INTEGER,
 			saved_at INTEGER NOT NULL DEFAULT 0,
 			modified_at INTEGER NOT NULL DEFAULT 0
 		)`,
@@ -75,6 +81,43 @@ func migrate(db *sql.DB) {
 		if _, err := db.Exec(stmt); err != nil {
 			log.Fatalf("migration failed: %v", err)
 		}
+	}
+
+	ensureColumn(db, "article_states", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+	ensureColumn(db, "article_states", "is_deleted_at", "INTEGER NOT NULL DEFAULT 0")
+	ensureColumn(db, "article_states", "deleted_at", "INTEGER")
+	ensureColumn(db, "read_later_states", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+	ensureColumn(db, "read_later_states", "is_deleted_at", "INTEGER NOT NULL DEFAULT 0")
+	ensureColumn(db, "read_later_states", "deleted_at", "INTEGER")
+}
+
+func ensureColumn(db *sql.DB, table, column, definition string) {
+	rows, err := db.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		log.Fatalf("column check failed: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name string
+		var typ string
+		var notNull int
+		var defaultValue sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultValue, &pk); err != nil {
+			log.Fatalf("column scan failed: %v", err)
+		}
+		if name == column {
+			return
+		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatalf("column check failed: %v", err)
+	}
+
+	if _, err := db.Exec("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition); err != nil {
+		log.Fatalf("column migration failed: %v", err)
 	}
 }
 
@@ -102,7 +145,7 @@ func GetFeedsModifiedSince(db *sql.DB, since int64) ([]FeedSync, error) {
 // GetArticlesModifiedSince returns article states modified after the given timestamp.
 func GetArticlesModifiedSince(db *sql.DB, since int64) ([]ArticleStateSync, error) {
 	rows, err := db.Query(
-		`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, modified_at
+		`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, is_deleted, is_deleted_at, deleted_at, modified_at
 		 FROM article_states WHERE modified_at > ?`, since)
 	if err != nil {
 		return nil, err
@@ -113,11 +156,15 @@ func GetArticlesModifiedSince(db *sql.DB, since int64) ([]ArticleStateSync, erro
 	for rows.Next() {
 		var a ArticleStateSync
 		var archivedAt sql.NullInt64
-		if err := rows.Scan(&a.URL, &a.IsRead, &a.IsReadAt, &a.IsArchived, &a.IsArchivedAt, &archivedAt, &a.ModifiedAt); err != nil {
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(&a.URL, &a.IsRead, &a.IsReadAt, &a.IsArchived, &a.IsArchivedAt, &archivedAt, &a.IsDeleted, &a.IsDeletedAt, &deletedAt, &a.ModifiedAt); err != nil {
 			return nil, err
 		}
 		if archivedAt.Valid {
 			a.ArchivedAt = &archivedAt.Int64
+		}
+		if deletedAt.Valid {
+			a.DeletedAt = &deletedAt.Int64
 		}
 		articles = append(articles, a)
 	}
@@ -127,7 +174,7 @@ func GetArticlesModifiedSince(db *sql.DB, since int64) ([]ArticleStateSync, erro
 // GetReadLaterModifiedSince returns read-later states modified after the given timestamp.
 func GetReadLaterModifiedSince(db *sql.DB, since int64) ([]ReadLaterStateSync, error) {
 	rows, err := db.Query(
-		`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, saved_at, modified_at
+		`SELECT url, is_read, is_read_at, is_archived, is_archived_at, archived_at, is_deleted, is_deleted_at, deleted_at, saved_at, modified_at
 		 FROM read_later_states WHERE modified_at > ?`, since)
 	if err != nil {
 		return nil, err
@@ -138,11 +185,15 @@ func GetReadLaterModifiedSince(db *sql.DB, since int64) ([]ReadLaterStateSync, e
 	for rows.Next() {
 		var r ReadLaterStateSync
 		var archivedAt sql.NullInt64
-		if err := rows.Scan(&r.URL, &r.IsRead, &r.IsReadAt, &r.IsArchived, &r.IsArchivedAt, &archivedAt, &r.SavedAt, &r.ModifiedAt); err != nil {
+		var deletedAt sql.NullInt64
+		if err := rows.Scan(&r.URL, &r.IsRead, &r.IsReadAt, &r.IsArchived, &r.IsArchivedAt, &archivedAt, &r.IsDeleted, &r.IsDeletedAt, &deletedAt, &r.SavedAt, &r.ModifiedAt); err != nil {
 			return nil, err
 		}
 		if archivedAt.Valid {
 			r.ArchivedAt = &archivedAt.Int64
+		}
+		if deletedAt.Valid {
+			r.DeletedAt = &deletedAt.Int64
 		}
 		items = append(items, r)
 	}
