@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -94,8 +95,11 @@ fun ArticleWebView(
             fun createWebView(): WebView = WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.allowFileAccess = true
-                settings.loadWithOverviewMode = true
+                settings.loadWithOverviewMode = false
                 settings.useWideViewPort = false
+                settings.textZoom = 100
+                settings.defaultTextEncodingName = "UTF-8"
+                setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
                 addJavascriptInterface(
                     PageBridge(
@@ -455,6 +459,7 @@ private class PageBridge(
 }
 
 private fun buildCssOverrides(prefs: ReadingPreferences): String {
+    val textAlignLast = if (prefs.textAlign == "justify") "left" else "auto"
     val rootVars = """
         :root {
             --font-family: '${prefs.fontFamily}', serif;
@@ -463,6 +468,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
             --margin-horizontal: ${prefs.marginHorizontal}px;
             --margin-vertical: ${prefs.marginVertical}px;
             --text-align: ${prefs.textAlign};
+            --text-align-last: $textAlignLast;
             --glyph-safe-inset: 8px;
             --reader-overlay-height: 56px;
         }
@@ -500,7 +506,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
 
 private fun wrapHtml(content: String, baseCss: String, cssOverrides: String): String = """
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
