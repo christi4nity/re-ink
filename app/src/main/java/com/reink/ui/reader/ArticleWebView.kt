@@ -216,13 +216,14 @@ fun ArticleWebView(
  * Pagination setup JS. Runs in onPageFinished.
  *
  * Column math:
- *   effective margin = user margin + glyph safety inset
- *   column-width = vw - 2*effective margin  (content per page)
- *   column-gap   = 2*effective margin       (right + left spacing between pages)
- *   body padding = effective margin left/right + fitted top/bottom space
- *   Page stride  = measured column-width + measured gap (avoids cumulative drift)
+ *   body margin = user margin
+ *   glyph safety inset = inner wrapper padding, so glyph overhangs don't clip
+ *   column-width = vw - 2*body margin - 2*glyph safety inset  (content per page)
+ *   column-gap   = 2*body margin + 2*glyph safety inset       (space between pages)
+ *   Page stride  = actual wrapper content width + column gap
  *
- * Key: body handles outer spacing; #col-wrapper is the column container.
+ * Key: body handles visible page margins; #col-wrapper owns the column layout
+ * and keeps a small per-page glyph safety inset inside its clipping edge.
  * We page by setting scrollLeft on #col-wrapper.
  */
 private const val PAGINATION_SETUP_JS = """
@@ -238,8 +239,15 @@ private const val PAGINATION_SETUP_JS = """
     var c = document.getElementById('col-wrapper');
     if (!b || !c) return;
 
+    function getViewportWidth() {
+        var visualWidth = window.visualViewport && window.visualViewport.width;
+        if (isFinite(visualWidth) && visualWidth > 0) return visualWidth;
+        if (window.innerWidth && window.innerWidth > 0) return window.innerWidth;
+        return h.clientWidth || 1;
+    }
+
     var vh = h.clientHeight;
-    var vw = h.clientWidth;
+    var vw = getViewportWidth();
     var progressBarHeight = 6;
     var measuredOverlayInset = parseFloat(
         getComputedStyle(h).getPropertyValue('--reader-overlay-height')
@@ -251,15 +259,14 @@ private const val PAGINATION_SETUP_JS = """
     ) || 0;
     var basePad = Math.max(0, extraVerticalInset) + userVerticalMargin;
     var bottomSafetyInset = Math.max(0, progressBarHeight - basePad);
-    var userMargin = parseInt(
+    var margin = parseFloat(
         getComputedStyle(h).getPropertyValue('--margin-horizontal')
     ) || 16;
     var glyphSafetyInset = parseFloat(
         getComputedStyle(h).getPropertyValue('--glyph-safe-inset')
     ) || 8;
-    var margin = userMargin + glyphSafetyInset;
-    var colWidth = Math.max(1, vw - 2 * margin);
-    var colGap = 2 * margin;
+    var colWidth = Math.max(1, vw - 2 * margin - 2 * glyphSafetyInset);
+    var colGap = 2 * margin + 2 * glyphSafetyInset;
     var contentHeight = 0;
 
     b.style.margin = '0';
@@ -278,7 +285,10 @@ private const val PAGINATION_SETUP_JS = """
     c.style.width = '100%';
     c.style.boxSizing = 'border-box';
     c.style.margin = '0';
-    c.style.padding = '0';
+    c.style.paddingTop = '0';
+    c.style.paddingBottom = '0';
+    c.style.paddingLeft = glyphSafetyInset + 'px';
+    c.style.paddingRight = glyphSafetyInset + 'px';
     c.style.columnFill = 'auto';
     c.style.webkitColumnFill = 'auto';
     c.style.overflow = 'hidden';
@@ -290,31 +300,44 @@ private const val PAGINATION_SETUP_JS = """
 
     function syncViewportMetrics() {
         vh = h.clientHeight;
-        vw = h.clientWidth;
-        colWidth = Math.max(1, vw - 2 * margin);
-        colGap = 2 * margin;
+        vw = getViewportWidth();
+        colWidth = Math.max(1, vw - 2 * margin - 2 * glyphSafetyInset);
+        colGap = 2 * margin + 2 * glyphSafetyInset;
         c.style.columnWidth = colWidth + 'px';
         c.style.webkitColumnWidth = colWidth + 'px';
         c.style.columnGap = colGap + 'px';
         c.style.webkitColumnGap = colGap + 'px';
     }
 
-    function getPageStride() {
+    function getWrapperPadding() {
         var cs = getComputedStyle(c);
-        var measuredColumnWidth = parseFloat(cs.columnWidth || cs.webkitColumnWidth);
+        return {
+            left: parseFloat(cs.paddingLeft) || 0,
+            right: parseFloat(cs.paddingRight) || 0
+        };
+    }
+
+    function getWrapperContentWidth() {
+        var pads = getWrapperPadding();
+        var measuredWidth = c.getBoundingClientRect().width - pads.left - pads.right;
+        return isFinite(measuredWidth) && measuredWidth > 0 ? measuredWidth : colWidth;
+    }
+
+    function getColumnGap() {
+        var cs = getComputedStyle(c);
         var measuredColumnGap = parseFloat(cs.columnGap || cs.webkitColumnGap);
-        if (!isFinite(measuredColumnWidth) || measuredColumnWidth <= 0) {
-            measuredColumnWidth = colWidth;
-        }
-        if (!isFinite(measuredColumnGap) || measuredColumnGap < 0) {
-            measuredColumnGap = colGap;
-        }
-        return Math.max(1, measuredColumnWidth + measuredColumnGap);
+        return isFinite(measuredColumnGap) && measuredColumnGap >= 0 ? measuredColumnGap : colGap;
+    }
+
+    function getPageStride() {
+        return Math.max(1, getWrapperContentWidth() + getColumnGap());
     }
 
     window.ReInkScrollToPage = function(page) {
         var stride = getPageStride();
-        c.scrollLeft = Math.round(page * stride);
+        var maxScroll = Math.max(0, c.scrollWidth - c.clientWidth);
+        var target = Math.max(0, page * stride);
+        c.scrollLeft = Math.min(target, maxScroll);
     };
 
     function applyVerticalPadding(topPad, bottomPad) {
@@ -333,8 +356,10 @@ private const val PAGINATION_SETUP_JS = """
 
     function measureFirstColumnGaps() {
         var cRect = c.getBoundingClientRect();
-        var colLeft = cRect.left;
-        var colRight = colLeft + colWidth;
+        var pads = getWrapperPadding();
+        var measuredColWidth = getWrapperContentWidth();
+        var colLeft = cRect.left + pads.left;
+        var colRight = colLeft + measuredColWidth;
         var colTop = cRect.top;
         var colBottom = colTop + contentHeight;
         var topMost = Infinity;
@@ -417,8 +442,8 @@ private const val PAGINATION_SETUP_JS = """
         applyVerticalPadding(basePad, basePad + bottomSafetyInset);
         rebalanceVerticalPadding();
         var stride = getPageStride();
-        var sw = c.scrollWidth;
-        var pageCount = Math.max(1, Math.floor(Math.max(0, sw - 1) / stride) + 1);
+        var maxScroll = Math.max(0, c.scrollWidth - c.clientWidth);
+        var pageCount = Math.max(1, Math.round(maxScroll / stride) + 1);
         if (pageCount !== lastReportedPageCount) {
             lastReportedPageCount = pageCount;
             ReInk.reportPageCount(pageCount);
@@ -492,7 +517,7 @@ private fun buildCssOverrides(prefs: ReadingPreferences): String {
         #col-wrapper {
             box-sizing: border-box;
             margin: 0;
-            padding: 0;
+            padding: 0 var(--glyph-safe-inset);
             -webkit-column-fill: auto;
             column-fill: auto;
         }
