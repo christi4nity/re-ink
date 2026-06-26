@@ -333,7 +333,9 @@ private const val PAGINATION_SETUP_JS = """
         return Math.max(1, getWrapperContentWidth() + getColumnGap());
     }
 
+    var lastPage = 0;
     window.ReInkScrollToPage = function(page) {
+        lastPage = page;
         var stride = getPageStride();
         var maxScroll = Math.max(0, c.scrollWidth - c.clientWidth);
         var target = Math.max(0, page * stride);
@@ -448,6 +450,25 @@ private const val PAGINATION_SETUP_JS = """
             lastReportedPageCount = pageCount;
             ReInk.reportPageCount(pageCount);
         }
+    }
+
+    // Re-paginate when the viewport changes size (e.g. device rotation or
+    // multi-window resize) and restore the page the reader was on. Without
+    // this the column layout keeps its old width and the reader appears to
+    // jump to the start.
+    var resizeTimer = null;
+    function handleViewportResize() {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            finalizePagination();
+            window.ReInkScrollToPage(lastPage);
+            // Second pass after the e-ink relayout settles.
+            setTimeout(function() { window.ReInkScrollToPage(lastPage); }, 200);
+        }, 100);
+    }
+    window.addEventListener('resize', handleViewportResize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleViewportResize);
     }
 
     requestAnimationFrame(function() {

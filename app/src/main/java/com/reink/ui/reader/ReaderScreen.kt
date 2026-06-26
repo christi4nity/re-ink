@@ -87,6 +87,14 @@ fun ReaderScreen(
         currentPage = 0
     }
 
+    // Keep the page index valid if the page count shrinks (e.g. after rotation
+    // reflows the article into fewer pages).
+    LaunchedEffect(totalPages) {
+        if (currentPage > totalPages - 1) {
+            currentPage = (totalPages - 1).coerceAtLeast(0)
+        }
+    }
+
     // Volume key navigation (only when paginated)
     LaunchedEffect(isPaginated) {
         if (!isPaginated) return@LaunchedEffect
